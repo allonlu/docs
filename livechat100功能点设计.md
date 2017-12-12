@@ -3,7 +3,7 @@
 1. 在t_Billing_Plan表增加以下列
 
 | Column | Type | Allow Nulls | Default | Description |
-| - | - | - | - | - | - |
+| - | - | - | - | - |
 | ReportFeaturePoints | bigint | N | 0 | 该字段控制Report中的功能点，具体的值可以参考下面的列表 |
 | HistoryStorageTime | int | N | 0 | 该字段控制历史数据的保存时间，单位为月，0表示不限制。用户不能查询超过这个时间范围的记录 |
 | MaxAgent | int | N | 0 | 该字段用来限制plan的最大agent数量，0表示不限制 |
