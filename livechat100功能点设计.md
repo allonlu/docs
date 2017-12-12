@@ -1,13 +1,22 @@
+# 总体设计
+
++ 所有需要控制的功能都通过功能点来控制
+  - 原来通过t_LiveChat_Config来控制的功能修改为通过功能点来控制
+  - 原来通过Plan中的Application Type (Team/Business/Enterprise)来控制的功能改为通过功能点来控制
+  - 原来通过Add On来控制的功能通过功能点来控制，用户购买/取消Add on时直接修改Feature Point的值
+  - Report相关功能因为控制的粒度比较细，而且原来都是使用Application Type来控制的，因此增加一个新的ReportFeaturePoints来控制相关功能点
+
 # 数据库
 
 1. 在t_Billing_Plan表增加以下列
 
 | Column | Type | Allow Nulls | Default | Description |
-| - | - | - | - | - | - |
+| - | - | - | - | - |
 | ReportFeaturePoints | bigint | N | 0 | 该字段控制Report中的功能点，具体的值可以参考下面的列表 |
 | HistoryStorageTime | int | N | 0 | 该字段控制历史数据的保存时间，单位为月，0表示不限制。用户不能查询超过这个时间范围的记录 |
 | MaxAgent | int | N | 0 | 该字段用来限制plan的最大agent数量，0表示不限制 |
 | InSale | bit | N | 1 | 该字段用来表示是否为正在销售的Plan, 这些Plan可以在后台直接选择 |
+
 
 ## Feature Point
 
@@ -58,6 +67,9 @@
 | -                                 | 1 < 42 | N | EnablePasswordPolicy         | A | N | N | Y | N | Y | Y | UA |
 | -                                 | 1 < 43 | N | EnableIPRestrictions         | A | N | N | Y | N | Y | Y | UB |
 | -                                 | 1 < 44 | N | EnableAuditLog               | A | N | N | Y | Y | Y | Y | UC |
+| -                                 | 1 < 45 | N | EnableSocialMedia            | A | N | N | N | N | N | Y | UD |
+| -                                 | 1 < 46 | N | EnableAudioVideoChat         | A | N | N | N | N | N | N | -  |
+| -                                 | 1 < 47 | N | EnableChatBot                | A | N | N | N | N | N | N | -  |
 
 
 + UX为针对Comm100平台的Plan进行对应feature ponint 的升级
@@ -73,6 +85,7 @@
   - UA. 为Business和Enterprise站点开启EnablePasswordPolicy功能
   - UB. 为Business和Enterprise站点开启EnableIPRestrictions功能
   - UC. 为所有站点开启EnableAuditLog功能
+  - UD. 为Enterprise站点开启EnableSocialMedia功能
 
 + 具体Plan的FeaturePoint值（十进制）
   - Start: 39360768
@@ -80,7 +93,7 @@
   - Pro: 30836696669623
   - Team: 17597018537925
   - Business: 34126723547135
-  - Enterprise: 35184371826687
+  - Enterprise: 70368743915519
 
 ## Report Feature Point
 | ReportFeaturePoint | VALUE | Start | Standard | Pro | Team | Businuess | Enterprise |
