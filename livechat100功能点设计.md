@@ -11,41 +11,39 @@
 1. 增加表t_Billing_FeaturePoint, 用来维护不同Plan/Addon的初始功能点状态
 
 | Colume | Type | Allow Nulls | Default | Description |
-| - | - | - | - | - |
-| OwnerType | nvarchar(64) | N | 0 | 表示该记录对应的类型，目前为Addon或者Plan |
+| - | :- | - | - | :- |
+| OwnerType | nvarchar(64) | N | '' | 表示该记录对应的类型，目前为Addon或者Plan |
 | OwnerId | int | N | 0 | 对应PlanId或者AddonId |
 | Product | int | N | 0 | 该字段表示功能点所属的产品，根据Product的枚举来赋值, 0 - admin, 1 - LiveChat |
-| Feature | nvarchar(64) | N | 0 | 表示具体的功能点，为系统定义的字符串常量 |
+| Feature | nvarchar(64) | N | '' | 表示具体的功能点，为系统定义的字符串常量 |
 | IfEnable | bit | N | 0 | 该字段表示对应的Feature是否打开 |
 
 2. 增加表t_Site_FeaturePoint，用来维护Feature站点的功能点，每一个站点的每个功能点都采用一条记录来维护
-Point
-| Column | Type | Allow Nulls | Default | Description |
-| - | - | - | - | - |
-| SiteId | int | N | 0 | 该字段表示这条记录的SiteId |
-| Feature | nvarchar(64) | N | 0 | 该字段为具体的功能点枚举，为系统定义的字符串常量 |
-| IfEnable  | bit | N | 0 | 该字段表示对应的FeaturePoint是否打开 |
 
-- 增加SiteId的索引，便于检索
+| Column | Type | Allow Nulls | Default | Description |
+| - | :- | - | - | :- |
+| SiteId | int | N | 0 | 该字段表示这条记录的SiteId，对SiteId做索引，优化查询 |
+| Feature | nvarchar(64) | N | '' | 该字段为具体的功能点枚举，为系统定义的字符串常量 |
+| IfEnable  | bit | N | 0 | 该字段表示对应的FeaturePoint是否打开 |
 
 3. 在t_Billing_Plan表中增加以下字段
 
 | Column | Type | Allow Nulls | Default | Description |
-| - | - | - | - | - |
+| - | :- | - | - | :- |
 | MaxAgent | int | N | 0 | 该字段控制当前Plan最大允许的Agent数量, 0表示不限制 |
 | InSale | bit | N | 0 | 该字段表示这个Plan是否为在售状态，只有在售状态的Plan才会在选择Plan的页面中展示出来 |
 
 4. 在t_Billing_SitePlan表中增加一下字段
 
 | Column | Type | Allow Nulls | Default | Description |
-| - | - | - | - | - |
-| MaxAgent | nvarchar(64) | N | 0 | 该字段控制站点允许的Agent最大数量，0表示不限制 |
+| - | :- | - | - | :- |
+| MaxAgent | int | N | 0 | 该字段控制站点允许的Agent最大数量，0表示不限制 |
 
 5. 在t_Billing_Plan表中删除以下无用的列
 
   - LiveChatFeaturePoint
 
-5. 在t_Site_FunctionConfig表中删除以下列
+6. 在t_Site_FunctionConfig表中删除以下列
 
   - LiveChat_IfEnableDepartment
   - LiveChat_IfCanCustomStyle
