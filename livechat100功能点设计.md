@@ -81,7 +81,7 @@
 ## Feature Point  
 
 | FeaturePoint | Product | Start | Standard | Pro | Team | Businuess | Enterprise |
-| - | :-: | :-: | :-: | :-: | :-: | :-: |
+| - | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
 | AgentPermission             | 0 | N | Y | Y | Y | Y | Y |
 | PasswordPolicy              | 0 | N | N | Y | N | Y | Y |
 | IPRestrictions              | 0 | N | N | Y | N | Y | Y |
