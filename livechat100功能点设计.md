@@ -1,130 +1,199 @@
 # 总体设计
 
-+ 所有需要控制的功能都通过功能点来控制
-  - 原来通过t_LiveChat_Config来控制的功能修改为通过功能点来控制
++ 所有需要控制的功能都通过功能点来控制，功能点采用行来设计，而不是原来的一个64位通过位运算来控制，这样便于以后的扩展以及测试检查数据
+  - 原来通过t_Site_FunctionConfig来控制的功能修改为通过功能点来控制
   - 原来通过Plan中的Application Type (Team/Business/Enterprise)来控制的功能改为通过功能点来控制
-  - 原来通过Add On来控制的功能通过功能点来控制，用户购买/取消Add on时直接修改Feature Point的值
-  - Report相关功能因为控制的粒度比较细，而且原来都是使用Application Type来控制的，因此增加一个新的ReportFeaturePoints来控制相关功能点
+  - 原来通过Add On来控制的功能通过功能点来控制，用户购买/取消Add on时直接修改功能点
+
 
 # 数据库
 
-1. 在t_Billing_Plan表增加以下列
+1. 增加表t_Billing_FeaturePoint, 用来维护不同Plan/Addon的初始功能点状态
+
+| Colume | Type | Allow Nulls | Default | Description |
+| - | - | - | - | - |
+| OwnerType | nvarchar(64) | N | 0 | 表示该记录对应的类型，目前为Addon或者Plan |
+| OwnerId | int | N | 0 | 对应PlanId或者AddonId |
+| Product | int | N | 0 | 该字段表示功能点所属的产品，根据Product的枚举来赋值, 0 - admin, 1 - LiveChat |
+| Feature | nvarchar(64) | N | 0 | 表示具体的功能点，为系统定义的字符串常量 |
+| IfEnable | bit | N | 0 | 该字段表示对应的Feature是否打开 |
+
+2. 增加表t_Site_FeaturePoint，用来维护Feature站点的功能点，每一个站点的每个功能点都采用一条记录来维护
+Point
+| Column | Type | Allow Nulls | Default | Description |
+| - | - | - | - | - |
+| SiteId | int | N | 0 | 该字段表示这条记录的SiteId |
+| Feature | nvarchar(64) | N | 0 | 该字段为具体的功能点枚举，为系统定义的字符串常量 |
+| IfEnable  | bit | N | 0 | 该字段表示对应的FeaturePoint是否打开 |
+
+- 增加SiteId的索引，便于检索
+
+3. 在t_Billing_Plan表中增加以下字段
 
 | Column | Type | Allow Nulls | Default | Description |
 | - | - | - | - | - |
-| ReportFeaturePoints | bigint | N | 0 | 该字段控制Report中的功能点，具体的值可以参考下面的列表 |
-| HistoryStorageTime | int | N | 0 | 该字段控制历史数据的保存时间，单位为月，0表示不限制。用户不能查询超过这个时间范围的记录 |
-| MaxAgent | int | N | 0 | 该字段用来限制plan的最大agent数量，0表示不限制 |
-| InSale | bit | N | 1 | 该字段用来表示是否为正在销售的Plan, 这些Plan可以在后台直接选择 |
+| MaxAgent | int | N | 0 | 该字段控制当前Plan最大允许的Agent数量, 0表示不限制 |
+| InSale | bit | N | 0 | 该字段表示这个Plan是否为在售状态，只有在售状态的Plan才会在选择Plan的页面中展示出来 |
+
+4. 在t_Billing_SitePlan表中增加一下字段
+
+| Column | Type | Allow Nulls | Default | Description |
+| - | - | - | - | - |
+| MaxAgent | nvarchar(64) | N | 0 | 该字段控制站点允许的Agent最大数量，0表示不限制 |
+
+5. 在t_Billing_Plan表中删除以下无用的列
+
+  - LiveChatFeaturePoint
+
+5. 在t_Site_FunctionConfig表中删除以下列
+
+  - LiveChat_IfEnableDepartment
+  - LiveChat_IfCanCustomStyle
+  - LiveChat_IfCanCustomAutoInvitationRules
+  - LiveChat_IfCanCustomFields
+  - LiveChat_IfEnableRating
+  - LiveChat_IfCanUseAdvancedReport
+  - LiveChat_IfRecordNavigation
+  - LiveChat_IfRemovalPoweredby
+  - LiveChat_IfCanUseDesktopClient
+  - LiveChat_IfCanUseMobileClient
+  - LiveChat_IfCanAutoAcceptChats
+  - LiveChat_IfCanUseAdvancedChatFunc
+  - LiveChat_IfCanEmailTranscript
+  - LiveChat_IfCanBan
+  - LiveChat_IfEnableMultipleCodePlan
+  - LiveChat_IfEnableInvitation
+  - LiveChat_IfEnableTeamWork
+  - LiveChat_IfCanUseReport
+  - LiveChat_IfCanQueryAllTranscript
+  - LiveChat_IfEnableExport
+  - LiveChat_IfEnableIntegrations
+  - LiveChat_IfEnableJavascriptAPI
+  - LiveChat_IfEnableCustomizedRouteRules
+  - LiveChat_IfEnableMaximumOn
+  - LiveChat_IfEnableChatTranslation
+  - LiveChat_IfEnableScreenSharing
+  - LiveChat_IfCanCustomCSS
+  - LiveChat_IfEnableWrapupChat
+  - LiveChat_IfEnableCannedMessageShortcuts
 
 
-## Feature Point
-
-| LiveChatFeaturePoint | VALUE | USING | FeaturePoint | Add/Change | Start | Standard | Pro | Team | Businuess | Enterprise | Upgrade |
-| - | :-: | :-: | - | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
-| IfCanUseAdvanceReport             | 1      | N | EnableAgentPermission        | C | N | Y | Y | Y | Y | Y | U1 |
-| IfEnableDepartment                | 1 < 1  | Y | EnableDepartment             | - | N | N | Y | N | Y | Y | -  |
-| IfCanCustomStyle                  | 1 < 2  | N | EnableAutoInvitation         | C | N | Y | Y | Y | Y | Y | U2 |
-| IfCanCustomAutoInvitationRules    | 1 < 3  | Y | EnableAutoInvitationRules    | - | N | N | N | N | Y | Y | -  |
-| IfCanCustomFields                 | 1 < 4  | Y | EnableCustomFields           | - | N | Y | Y | N | Y | Y | -  |
-| IfEnableRating                    | 1 < 5  | Y | EnableRating                 | - | N | Y | Y | N | Y | Y | -  |
-| IfEnableInvitation                | 1 < 6  | Y | EnableManualInvitation       | - | N | N | N | Y | Y | Y | -  |
-| IfEnableMultipleCodePlan          | 1 < 7  | Y | EnableMultipleCampaigns      | - | N | N | Y | Y | Y | Y | -  |
-| IfCanEmailtranscript              | 1 < 8  | Y | EnableEmailTranscript        | - | Y | Y | Y | Y | Y | Y | -  |
-| IfCanQueryAllTranscript           | 1 < 9  | N | EnableCustomSMTPServer       | C | N | N | N | Y | Y | Y | U3 |
-| IfCanUseReport                    | 1 < 10 | N | EnableSimpleRoute            | C | N | N | Y | Y | Y | Y | U4 |
-| IfCanUseDesktopClient             | 1 < 11 | Y | EnableDesktopClient          | - | Y | Y | Y | Y | Y | Y | -  |
-| IfCanUseMobileClient              | 1 < 12 | Y | EnableMobileClient           | - | Y | Y | Y | Y | Y | Y | -  |
-| IfCanUseAutoAcceptChats           | 1 < 13 | Y | EnableAutoAccept             | - | N | N | N | Y | Y | Y | -  |
-| IfCanUseAdvancedChatFunc          | 1 < 14 | Y | EnableAdvancedChatFunc       | - | N | Y | Y | Y | Y | Y | -  |
-| IfCanBan                          | 1 < 15 | Y | EnableBan                    | - | Y | Y | Y | Y | Y | Y | -  |
-| IfEnableTeamwork                  | 1 < 16 | Y | EnableTeamwork               | - | N | Y | Y | Y | Y | Y | -  |
-| IfRemovePoweredby                 | 1 < 17 | Y | EnablePoweredByRemoval       | - | N | N | N | N | Y | Y | -  |
-| IfRecordNavigation                | 1 < 18 | Y | EnableRecordNavigation       | - | N | N | N | N | N | N | -  |
-| IfEnableExport                    | 1 < 19 | Y | EnableExportHistory          | - | Y | Y | Y | Y | Y | Y | -  |
-| IfEnableIntegrations              | 1 < 20 | Y | EnableIntegrations           | - | Y | Y | Y | N | Y | Y | -  |
-| IfEnableJavascriptAPI             | 1 < 21 | Y | EnableCustomVariable         | C | N | N | N | N | Y | Y | U5 |
-| IfEnableMaxOn                     | 1 < 22 | Y | EnableMaxOn                  | - | Y | Y | Y | N | N | Y | -  |
-| IfEnableCustomRoute               | 1 < 23 | Y | EnableRoutingRules           | - | N | N | N | N | N | Y | -  |
-| IfEnableChatTranslation           | 1 < 24 | Y | EnableChatTranslation        | - | N | N | N | N | Y | Y | -  |
-| IfEnableScreenSharing             | 1 < 25 | Y | EnableScreenSharing          | - | Y | Y | Y | N | Y | Y | -  |
-| IfEnableEnableCustomCSS           | 1 < 26 | Y | EnableCustomCSS              | - | N | N | N | N | Y | Y | -  |
-| IfEnableCannedMessageShortcuts    | 1 < 27 | Y | EnableCannedMessageShortcut  | - | N | N | Y | N | Y | Y | -  |
-| IfEnableWrapupChat                | 1 < 28 | Y | EnableWrapup                 | - | N | N | Y | N | Y | Y | -  |
-| IfEnableAwayStatus                | 1 < 29 | Y | EnableCustomAwayStatus       | - | N | Y | Y | Y | Y | Y | -  |
-| IfEnableDashboardCustomMetric     | 1 < 30 | Y | EnableCustomMatrics          | - | N | N | N | N | N | Y | -  |
-| IfEnableRecordOperatorMessage     | 1 < 31 | Y | EnableRecordAgentMessage     | - | N | Y | Y | N | Y | Y | -  |
-| IfEnableTransferToDepartment      | 1 < 32 | N | EnableDomainRestriction      | C | N | N | Y | Y | Y | Y | U6 |
-| IfEnablePCIForm                   | 1 < 33 | Y | EnablePCIForm                | - | N | N | Y | N | N | Y | -  |
-| IfEnableSSO                       | 1 < 34 | Y | EnableSSO                    | - | N | N | N | N | N | Y | -  |
-| IfEnableVisitorCustomFilter       | 1 < 35 | Y | EnableVisitorCustomFilter    | - | N | N | Y | N | Y | Y | -  |
-| IfEnableVisitorSegment            | 1 < 36 | Y | EnableVisitorSegmentation    | - | N | N | N | N | N | Y | -  |
-| IfEnableDynamicCodePlan           | 1 < 37 | Y | EnableDynamicCampaign        | - | N | N | N | N | N | Y | -  |
-| IfEnableExtensions                | 1 < 38 | Y | EnableAgentConsoleExtension  | - | N | N | N | N | N | Y | -  |
-| -                                 | 1 < 39 | N | EnableAutoAllocation         | A | N | N | N | N | N | Y | U7 |
-| -                                 | 1 < 40 | N | EnableLiveChatAPI            | A | N | N | N | N | Y | Y | U8 |
-| -                                 | 1 < 41 | N | EnableJavascriptAPI          | A | N | N | N | N | Y | Y | U9 |
-| -                                 | 1 < 42 | N | EnablePasswordPolicy         | A | N | N | Y | N | Y | Y | UA |
-| -                                 | 1 < 43 | N | EnableIPRestrictions         | A | N | N | Y | N | Y | Y | UB |
-| -                                 | 1 < 44 | N | EnableAuditLog               | A | N | N | Y | Y | Y | Y | UC |
-| -                                 | 1 < 45 | N | EnableSocialMedia            | A | N | N | N | N | N | Y | UD |
-| -                                 | 1 < 46 | N | EnableAudioVideoChat         | A | N | N | N | N | N | N | -  |
-| -                                 | 1 < 47 | N | EnableChatBot                | A | N | N | N | N | N | N | -  |
 
 
-+ UX为针对Comm100平台的Plan进行对应feature ponint 的升级
-  - U1. 为所有站点开启EnableAgentPermission功能
-  - U2. 为所有站点开启EnableAutoInvitation功能
-  - U3. 为所有站点开启EnableCustomSMTPServer功能
-  - U4. 为所有站点开启EnableSimpleRoute功能
-  - U5. 为Business和Enterprise站点开启EnableCustomVariable功能
-  - U6. 为所有站点开启EnableDomainRestriction功能
-  - U7. 为Enterprise站点和EnableRoutingRules开启的站点开启EnableAutoAllocation功能
-  - U8. 为Business和Enterprise站点以及EnableCustomVariable开启的站点开启EnableLiveChatAPI功能
-  - U9. 为Business和Enterprise站点开启EnableJavascriptAPI功能
-  - UA. 为Business和Enterprise站点开启EnablePasswordPolicy功能
-  - UB. 为Business和Enterprise站点开启EnableIPRestrictions功能
-  - UC. 为所有站点开启EnableAuditLog功能
-  - UD. 为Enterprise站点开启EnableSocialMedia功能
+## Feature Point  
 
-+ 具体Plan的FeaturePoint值（十进制）
-  - Start: 39360768
-  - Standard: 2723797301
-  - Pro: 30836696669623
-  - Team: 17597018537925
-  - Business: 34126723547135
-  - Enterprise: 70368743915519
+| FeaturePoint | Product | Start | Standard | Pro | Team | Businuess | Enterprise |
+| - | :-: | :-: | :-: | :-: | :-: | :-: |
+| AgentPermission             | 0 | N | Y | Y | Y | Y | Y |
+| PasswordPolicy              | 0 | N | N | Y | N | Y | Y |
+| IPRestrictions              | 0 | N | N | Y | N | Y | Y |
+| AuditLog                    | 0 | N | N | Y | Y | Y | Y |
+| Department                  | 1 | N | N | Y | N | Y | Y |
+| AutoInvitation              | 1 | N | Y | Y | Y | Y | Y |
+| AutoInvitationRules         | 1 | N | N | N | N | Y | Y |
+| CustomFields                | 1 | N | Y | Y | N | Y | Y |
+| Rating                      | 1 | N | Y | Y | N | Y | Y |
+| ManualInvitation            | 1 | N | N | N | Y | Y | Y |
+| MultipleCampaigns           | 1 | N | N | Y | Y | Y | Y |
+| EmailTranscript             | 1 | Y | Y | Y | Y | Y | Y |
+| CustomSMTPServer            | 1 | N | N | N | Y | Y | Y |
+| SimpleRoute                 | 1 | N | N | Y | Y | Y | Y |
+| DesktopClient               | 1 | Y | Y | Y | Y | Y | Y |
+| MobileClient                | 1 | Y | Y | Y | Y | Y | Y |
+| AutoAccept                  | 1 | N | N | N | Y | Y | Y |
+| AdvancedChatFunc            | 1 | N | Y | Y | Y | Y | Y |
+| Ban                         | 1 | Y | Y | Y | Y | Y | Y |
+| Teamwork                    | 1 | N | Y | Y | Y | Y | Y |
+| PoweredByRemoval            | 1 | N | N | N | N | Y | Y |
+| RecordNavigation            | 1 | N | N | N | N | N | N |
+| ExportHistory               | 1 | Y | Y | Y | Y | Y | Y |
+| Integrations                | 1 | Y | Y | Y | N | Y | Y |
+| CustomVariable              | 1 | N | N | N | N | Y | Y |
+| MaximumOn                   | 1 | Y | Y | Y | N | N | Y |
+| RoutingRules                | 1 | N | N | N | N | N | Y |
+| ChatTranslation             | 1 | N | N | N | N | Y | Y |
+| ScreenSharing               | 1 | Y | Y | Y | N | Y | Y |
+| CustomCSS                   | 1 | N | N | N | N | Y | Y |
+| CannedMessageShortcut       | 1 | N | N | Y | N | Y | Y |
+| Wrapup                      | 1 | N | N | Y | N | Y | Y |
+| CustomAwayStatus            | 1 | N | Y | Y | Y | Y | Y |
+| CustomMatrics               | 1 | N | N | N | N | N | Y |
+| RecordAgentMessage          | 1 | N | Y | Y | N | Y | Y |
+| DomainRestriction           | 1 | N | N | Y | Y | Y | Y |
+| PCIForm                     | 1 | N | N | Y | N | N | Y |
+| SSO                         | 1 | N | N | N | N | N | Y |
+| VisitorCustomFilter         | 1 | N | N | Y | N | Y | Y |
+| VisitorSegmentation         | 1 | N | N | N | N | N | Y |
+| DynamicCampaign             | 1 | N | N | N | N | N | Y |
+| AgentConsoleExtension       | 1 | N | N | N | N | N | Y |
+| AutoAllocation              | 1 | N | N | N | N | N | Y |
+| LiveChatAPI                 | 1 | N | N | N | N | Y | Y |
+| JavascriptAPI               | 1 | N | N | N | N | Y | Y |
+| SocialMedia                 | 1 | N | N | N | N | N | Y |
+| AudioVideoChat              | 1 | N | N | N | N | N | N |
+| ChatBot                     | 1 | N | N | N | N | N | N |
+| ExportReport                | 1 | N | Y | Y | Y | Y | Y |
+| DistributionDisplayReport   | 1 | N | N | N | Y | Y | Y |
+| ReportRealTime              | 1 | N | Y | Y | Y | Y | Y |
+| ReportChatVolume            | 1 | N | Y | Y | Y | Y | Y |
+| ReportOfflineMessage        | 1 | N | Y | Y | Y | Y | Y |
+| ReportAvailability          | 1 | N | Y | Y | Y | Y | Y |
+| ReportAgentPerformance      | 1 | N | Y | Y | Y | Y | Y |
+| ReportRating                | 1 | N | Y | Y | N | Y | Y |
+| ReportPostChatSurvey        | 1 | N | N | Y | N | Y | Y |
+| ReportPreChatSurvey         | 1 | N | N | Y | N | Y | Y |
+| ReportWrapup                | 1 | N | N | Y | N | Y | Y |
+| ReportCannedMessage         | 1 | N | N | Y | N | Y | Y |
+| ReportRealTimeAgent         | 1 | N | N | N | N | Y | Y |
+| ReportEfficiency            | 1 | N | N | N | N | N | Y |
+| ReportWorkload              | 1 | N | N | N | N | N | Y |
+| ReportQueue                 | 1 | N | N | N | N | N | Y |
+| ReportChatSource            | 1 | N | N | N | N | N | Y |
+| ReportWaitTime              | 1 | N | N | N | N | N | Y |
+| ReportChatTransfer          | 1 | N | N | N | N | N | Y |
+| ReportManualInvitation      | 1 | N | N | N | N | N | Y |
+| ReportAutoInvitation        | 1 | N | N | N | N | N | Y |
 
-## Report Feature Point
-| ReportFeaturePoint | VALUE | Start | Standard | Pro | Team | Businuess | Enterprise |
-| - | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
-| EnableExportReport                | 1      | N | Y | Y | Y | Y | Y |
-| EnableDistributionDisplayReport   | 1 < 1  | N | N | N | Y | Y | Y |
-| EnableReportRealTime              | 1 < 2  | N | Y | Y | Y | Y | Y |
-| EnableReportChatVolume            | 1 < 3  | N | Y | Y | Y | Y | Y |
-| EnableReportOfflineMessage        | 1 < 4  | N | Y | Y | Y | Y | Y |
-| EnableReportAvailability          | 1 < 5  | N | Y | Y | Y | Y | Y |
-| EnableReportAgentPerformance      | 1 < 6  | N | Y | Y | Y | Y | Y |
-| EnableReportRating                | 1 < 7  | N | Y | Y | N | Y | Y |
-| EnableReportPostChatSurvey        | 1 < 8  | N | N | Y | N | Y | Y |
-| EnableReportPreChatSurvey         | 1 < 9  | N | N | Y | N | Y | Y |
-| EnableReportWrapup                | 1 < 10 | N | N | Y | N | Y | Y |
-| EnableReportCannedMessage         | 1 < 11 | N | N | Y | N | Y | Y |
-| EnableReportRealTimeAgent         | 1 < 12 | N | N | N | N | Y | Y |
-| EnableReportEfficiency            | 1 < 13 | N | N | N | N | N | Y |
-| EnableReportWorkload              | 1 < 14 | N | N | N | N | N | Y |
-| EnableReportQueue                 | 1 < 15 | N | N | N | N | N | Y |
-| EnableReportChatSource            | 1 < 16 | N | N | N | N | N | Y |
-| EnableReportWaitTime              | 1 < 17 | N | N | N | N | N | Y |
-| EnableReportChatTransfer          | 1 < 18 | N | N | N | N | N | Y |
-| EnableReportManualInvitation      | 1 < 19 | N | N | N | N | N | Y |
-| EnableReportAutoInvitation        | 1 < 20 | N | N | N | N | N | Y |
+# 类设计
 
+  - 用户注册某一个Plan时，就会将该Plan下面的所有FeaturePoint拷贝一份到t_Site_FeaturePoint
+  - 用户切换Plan时，会将该Plan下面的所有FeaturePoint更新到t_Site_FeaturePoint
+  - 用户购买Addon时，会将该Addon下面的所有FeaturePoint添加到t_Site_FeaturePoint中
+  - 用户删除Addon时，会将该Addon下面的所有FeaturePoint从t_Site_FeaturePoint中删除
+  - 新增功能点时需要同时为AddOn/Plan以及Site增加对应的FeaturePoint
 
-+ 具体Plan的ReportFeaturePoint
-  - Start: 0
-  - Standard: 253
-  - Pro: 4093
-  - Team: 127
-  - Business: 8191
-  - Enterprise: 2097151
+1. 增加PlanFeature类
+
+  ```c#
+  public class PlanFeaturePoints {
+    private int _planId;
+    private Dictionary _features;
+    public PlanFeaturePoints(int planId) {}
+    public updateFeaturePoints(Dictionary features) {}
+  }
+  ```
+
+2. 增加AddonFeature类
+
+  ```c#
+  public class AddonFeaturePoints {
+    private int _addonId;
+    private Dictionary _features;
+    public AddonFeature(int planId) {}
+    public updateFeatures(Dictionary features) {}
+  }
+  ```
+
+3. 增加SiteFeature类
+
+  ```c#
+  public class SiteFeature {
+    private int _siteId;
+    private Dictionary _features;
+    public SiteFeature(int siteId) {}
+    public addAddon(int addonId) {}
+    public remoteAddon(int addonId) {}
+    public switchPlan(int planId) {}
+  }
+  ```
+
