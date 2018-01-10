@@ -1,17 +1,17 @@
 
 # General
 
-1. 用户可以通过manifest配置一个顶级菜单及页面用来显示Bot的功能配置
-2. 用户可以通过manifest中的配置添加一个Agent Console SideBar
-3. 用户可以通过manifest中Bot的配置接入一个自己的Bot系统
-4. 用户可以通过manifest中访客端的js配置,接入处理Bot消息的接口
-5. Campaign中关于bot的配置在Live Chat中写死,暂时不提供开放性
+1. [用户可以通过manifest配置一个顶级菜单及页面用来显示Bot的功能配置](#product-menu)
+2. [用户可以通过manifest中的配置添加一个Agent Console SideBar](#agent-console-sidebar)
+3. [用户可以通过manifest中Bot的配置接入一个自己的Bot系统](#external-bot)
+4. [用户可以通过manifest中访客端的js配置,接入处理Bot消息的接口](#visitor-side-handle-bot-message)
+5. [Campaign中关于bot的配置在Live Chat中写死,暂时不提供开放性](#campaign-bot)
 
 # 开放平台 Chat Bot的接入点
 
-## 用户可以配置一个顶级菜单及页面用来配置Bot的功能配置
+## Product Menu
 
-APP的manifest中可以声明一个产品级菜单的功能
+用户可以配置一个顶级菜单及页面用来配置Bot的功能配置, 可以在APP的manifest中可以声明一个产品级菜单的功能
 
 ```json
   {
@@ -29,10 +29,9 @@ APP的manifest中可以声明一个产品级菜单的功能
   - 具体的url可能为`https://hosted.comm100.com/apps/chat-bot/manage/index.html`
 3. 该页面的权限配置及身份认证同LiveChat后台菜单上增加一个配置页面
 
+## Agent Console Sidebar
 
-## 用户可以通过manifest中的配置添加一个Agent Console SideBar
-
-可以通过Agent Console的扩展来实现, 在manifest中配置以下内容, Agent Console的Chats右侧菜单会显示`/sidebar/index.html`页面
+用户可以通过manifest中的配置添加一个Agent Console SideBar, Agent Console的Chats右侧菜单会显示`/sidebar/index.html`页面
 
 ```json
   {
@@ -47,7 +46,9 @@ APP的manifest中可以声明一个产品级菜单的功能
   }
 ```
 
-## 用户可以通过manifest中Bot的配置接入一个自己的Bot系统
+## External Bot
+
+用户可以通过manifest中Bot的配置接入一个自己的Bot系统, 这个bot会参与到聊天的分配，并且在特定的时候会调用bot提供的两个接口
 
 ```json
   {
@@ -55,15 +56,15 @@ APP的manifest中可以声明一个产品级菜单的功能
       "endpoint": {
         "list": {
           "method": "GET",
-          "url": "https://api.chatbot.com/comm100/{siteId}/bots",
+          "url": "https://api.chatbot.com/comm100/{siteId}/bots", // {siteId}为宏, Comm100在处理这个地址时会替换掉这个参数
           "headers": [
-            "Authorization": "Bearer {app.metadata.token}",
+            "Authorization": "Bearer {app.metadata.token}", // {app.metadata.token} 为后台安装这个app时设置的元数据, 
             "x-api-version": "v2",
           ]
         },
         "message": {
           "method": "POST", //必须为post
-          "url": "https://api.chatbot.com/comm100/{siteId}/bots/{id}/message",
+          "url": "https://api.chatbot.com/comm100/{siteId}/bots/{botId}/message", // {botId}为宏参，表示使用的bot Id, 用户可以选择设置或者不设置, body中的内容也会有botId的属性
           "headers": [
             "Authorization": "Bearer {app.metadata.token}",
             "x-api-version": "v2",
@@ -74,15 +75,15 @@ APP的manifest中可以声明一个产品级菜单的功能
   }
 ```
 
-### List
+### Bot List
 
 用户加载campaign >> bot页面时请求对应的接口获取具体的bot列表
 
-1. Request
+  1. Request
 
   `GET 'https://api.chatbot.com/comm100/10000/bots'`
 
-2. Response
+  2. Response
 
   ```json
     [
@@ -96,13 +97,14 @@ APP的manifest中可以声明一个产品级菜单的功能
     ]
   ```
 
-### Message
+### Bot Engine Handle Visitor Message
 
 Chat Server收到visitor的消息时会调用message接口
 
-1. Request
+  1. Request
 
   `POST 'https://api.chatbot.com/comm100/10000/bots/i934ru90ruoewq/message'`
+
   ```javascript
     // body struct
     const botMessage =  {
@@ -138,11 +140,13 @@ Chat Server收到visitor的消息时会调用message接口
     }
   ```
 
-2. Response
+
+  2. Response
+
   ```javascript
     const responseMessage = {
       type: 'text', // text/image/file/custom
-      content: 'Your balance is $99.00', // 聊天记录会保存这条消息
+      content: 'Your balance is $99.00',
       extend: { // 动态对象, 针对custom类型用户可以设置任意的属性和值, 在访客端前端处理这个对象
         // type: 'form', // require_login/form/high_confidence_answer/possible_answer/no_answer
         // ...
@@ -150,7 +154,9 @@ Chat Server收到visitor的消息时会调用message接口
     }
   ```
 
-3. System Extend Object
+
+  3. System Extend Object
+
   ```javascript
     const imageExtend = {
       name: "id.png",
@@ -162,10 +168,9 @@ Chat Server收到visitor的消息时会调用message接口
     }
   ```
 
+## Visitor Side Handle Bot Message
 
-## 用户可以通过manifest中访客端的js配置,接入处理Bot消息的接口
-
-### manifest 中的定义
+用户可以通过manifest中访客端的js配置,接入处理Bot消息的接口
 
 ```json
   {
@@ -179,7 +184,7 @@ Chat Server收到visitor的消息时会调用message接口
 
 安装这个APP以后, 前端在加载访客端的js以后会加载上面的js
 
-### 访客端Custom JS接口
+### JS API
 
 1. 访客端处理Bot的消息
 
@@ -205,8 +210,8 @@ Chat Server收到visitor的消息时会调用message接口
   ```javascript
     const message = {
       type: 'custom',
-      content: 'I submit a form. \n name: allon \n email: allon.lu@comm100.com',  // 聊天记录中会保存这条消息
-      extend: { // 动态结构, 开发者可以任意定义这个结构, ChatBot那边会接收到这部分信息
+      content: 'I submit a form. \n name: allon \n email: allon.lu@comm100.com',
+      extend: { // 动态结构
         type: 'form_submit',
         data: {
           name: 'allon',
@@ -217,4 +222,6 @@ Chat Server收到visitor的消息时会调用message接口
     Comm100API.do('livechat.chat.message.send', message);
   ```
 
+## Campaign Bot
 
+Campaign中关于Bot中的配置目前不开放设置，Campaign对应bot的关系由Comm100维护, 列表由上面的List接口获取, 从列表中获取到的信息会列在Comm100本身bot的后面, 其他关于分配的逻辑由Comm100定死, 用户只能配置公开的两个选项。
