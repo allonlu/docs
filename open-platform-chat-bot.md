@@ -487,21 +487,21 @@ Manifest中可用的宏如下所示：
 
 ```javascript
     const site = {
-      id: '10000',            // {siteId}
-      name: 'comm100',        // {siteName}
+      id: '10000',            // {site.id}
+      name: 'comm100',        // {site.name}
     }
 
     const chat = {
-      id: '@chat_id',
-      campaignId: '@campaign_id',
-      visitor: {
-        id: '@visitor_id',
-        name: 'Allon',
-        email: 'allon.lu@comm100.com',
+      id: '@chat_id',     // {chat.id}
+      campaignId: '@campaign_id', // {chat.campaignId}
+      visitor: {    
+        id: '@visitor_id',    // {chat.visitor.id}
+        name: 'Allon',        // {chat.visitor.name}
+        email: 'allon.lu@comm100.com',  // {chat.visitor.email}
       },
       bot: {
-        id: '@bot_id',
-        language: 'en_us',
+        id: '@bot_id',      // {chat.bot.id}
+        language: 'en_us',  // {chat.bot.language}
       }
     }
 
@@ -517,7 +517,7 @@ Manifest中可用的宏如下所示：
       agent:{
         metadata:{ 
           token: '@token',  // {agent.metadata.token}
-          email: 'allon.lu@comm100.com',
+          email: 'allon.lu@comm100.com',  // {agent.metadata.email}
         }
       }      
     }
