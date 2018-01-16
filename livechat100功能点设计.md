@@ -30,20 +30,30 @@
 
 | Column | Type | Allow Nulls | Default | Description |
 | - | :- | - | - | :- |
+| ShortName | nvarchar(64) | N | 0 | 该字段控制Plan在Switch Plan页面上的显示，或者其他需要标识Plan版本的地方，区别于name(全称) |
 | MaxAgent | int | N | 0 | 该字段控制当前Plan最大允许的Agent数量, 0表示不限制 |
+| HistoryStorageTime | int | N | 0 | 该字段控制站点的历史数据保存时间, 用户在使用报表时会限定只能在该时间范围内 |
+| IfRequirePaymentInfo | bit | N | 0 |  该字段表示这个plan是否需要付款信息才能使用 |
 | InSale | bit | N | 0 | 该字段表示这个Plan是否为在售状态，只有在售状态的Plan才会在选择Plan的页面中展示出来 |
 
-4. 在t_Billing_SitePlan表中增加一下字段
+4. 在t_Billing_SitePlan表中增加以下字段
+
+| Column | Type | Allow   | Default | Description |
+| - | :- | - | - | :- |
+| MaxAgent | int | N | 0 | 该字段控制站点允许的Agent最大数量，0表示不限制 |
+| HistoryStorageTime | int | N | 0 | 该字段控制站点的历史数据保存时间, 用户在使用报表时会限定只能在该时间范围内 |
+
+5. 在t_Billing_SiteAddon表中增加以下字段
 
 | Column | Type | Allow Nulls | Default | Description |
 | - | :- | - | - | :- |
-| MaxAgent | int | N | 0 | 该字段控制站点允许的Agent最大数量，0表示不限制 |
+| AddonId | int | N | 0 | 该字段记录了Site中添加的Addon的Id，在移除该AddOn时可以相应的移除对应的feature |
 
-5. 在t_Billing_Plan表中删除以下无用的列
+6. 在t_Billing_Plan表中删除以下无用的列
 
   - LiveChatFeaturePoint
 
-6. 在t_Site_FunctionConfig表中删除以下列
+7. 在t_Site_FunctionConfig表中删除以下列
 
   - LiveChat_IfEnableDepartment
   - LiveChat_IfCanCustomStyle
@@ -111,6 +121,7 @@
 | RoutingRules                | 1 | N | N | N | N | N | Y |
 | ChatTranslation             | 1 | N | N | N | N | Y | Y |
 | ScreenSharing               | 1 | Y | Y | Y | N | Y | Y |
+| CustomStyle                 | 1 | N | N | N | Y | Y | Y |    
 | CustomCSS                   | 1 | N | N | N | N | Y | Y |
 | CannedMessageShortcut       | 1 | N | N | Y | N | Y | Y |
 | Wrapup                      | 1 | N | N | Y | N | Y | Y |
