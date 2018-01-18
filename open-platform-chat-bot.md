@@ -486,12 +486,12 @@ Campaign中关于Bot中的配置目前不开放设置，Campaign对应bot的关�
 Manifest中可用的宏如下所示：
 
 ```javascript
-    const site = {
+    const site = {            // list/message 接口都可用
       id: '10000',            // {site.id}
       name: 'comm100',        // {site.name}
     }
 
-    const chat = {
+    const chat = {            // message接口可用
       id: '@chat_id',     // {chat.id}
       campaignId: '@campaign_id', // {chat.campaignId}
       visitor: {    
@@ -505,7 +505,7 @@ Manifest中可用的宏如下所示：
       }
     }
 
-    const app = {
+    const app = {           // list/message 接口都可用
         app:{
           metadata:{ 
             token: '@token'   //{app.metadata.token}
@@ -513,7 +513,7 @@ Manifest中可用的宏如下所示：
         }      
     }
 
-    const agent = {
+    const agent = {       // message 接口可用
       agent:{
         metadata:{ 
           token: '@token',  // {agent.metadata.token}
