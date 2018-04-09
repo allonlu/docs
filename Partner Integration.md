@@ -12,11 +12,11 @@
 
 ## Role Definition
  - Comm100 
- - Partner -合作伙伴
-   + 代理商 -作为Comm100的代理商，销售Comm100的产品的企业
-   + 集成商 -需要将Comm100产品集成到自己产品中的企业
- - 客户 -合作伙伴的客户，每个客户有自己的站点
- - Agent -客服，隶属于合作伙伴的客户
+ - Partner - 合作伙伴
+   + 代理商 - 作为Comm100的代理商，销售Comm100的产品的企业
+   + 集成商 - 需要将Comm100产品集成到自己产品中的企业
+ - 客户 - 合作伙伴的客户，每个客户有自己的站点
+ - Agent - 客服，隶属于合作伙伴的客户
 
 ## Business Scenario
 1. Partner自定义一套Comm100的产品，直接将这个自定义产品卖给他的客户，供其使用。  
@@ -47,7 +47,8 @@
     - `productName` - LiveChat产品名字
     - `logo` - Comm100产品的logo
   4. <font color=red>Partner可以配置前端样式</font>
-    - Phase I: 在目前的产品框架下，Comm10需要0根据客户的需求定义前端样式文件, 配置到数据库中, 这个配置和定义不对Partner开放, 原则上只接受简单的样式定制, 如主题颜色的修改
+    - Phase I: 在目前的产品框架下，Comm100需要根据客户的需求定义前端样式文件, 配置到数据库中, 这个配置和定义不对Partner开放, 原则上只接受简单的样式定制, 如主题颜色的修改
+      - 因为当前的产品的样式不是统一的, 后台的各个模块有部分样式都是独立的, 并且Live Chat 和Account的样式都是独立维护的, 而且这些样式跟Agent的样式又是不一样的, 所以目前无法公开这部分样式让用户自行修改, 如果单从这个层面去将样式统一工作量会比较大, 而且接下去前端改版时会做样式的统一, 所以在前端改版之前如果Partner需要定制样式就需要付费由Comm100来统一修改。
     - Phase II: Comm100统一所有的前端样式, 开放所有的前端样式给用户, 可以让用户自定义样式, 覆盖Comm100默认的样式
   5. Partner管理客户站点
     - 开户: Partner可以通过开户功能手动为客户建站, 开户需要输入以下信息
@@ -71,14 +72,13 @@
       - `disabled` - 站点是否已经激活
         - `disable/enable` - 操作, 点击禁用或者启用站点
   6. Partner管理安全相关配置
-    - `Agent SSO` - 用户可以配置SSO来实现账号统一认证, 使用自己的账号系统对客户的Agent进行身份认证。Agent无需输入凭证就可以访问Comm100。
+    - `Agent SSO` - Partner可以配置站点使用SSO来实现账号统一认证, 客户使用Partner系统中的账号在Partner的认证系统中进行身份认证, 而无需使用Comm100的账号系统进行认证。
       - [SSO Settings](#sso-settings) -SSO配置
     - `Partner API IP white list` - 使用Comm100的Partner API和Partner应用系统的IP白名单, 可以配置多条
     - `Iframe Allow Domain` - Partner配置允许使用iframe调用的域名, 只有在配置列表中的域名会被允许, 这个会在页面加载时从http 头 `X-Frame-Options`返回
     - `Oauth Client` - Partner作为Comm100的第三方应用需要调用Comm100 Restful API来访问用户数据时则必须申请OAuth客户端。Parnter可以新建/修改/删除`Oauth Client`, 界面上会显示当前的Oauth Client列表
       - `client_id` - Oauth中的`client_id`, 在请求获取access_token时需要使用, 在添加Oauth Client时自动生成
       - `client_secret`- Oauth的`client_secret`, 在请求获取access_token时使用，在添加Oauth Client时自动生成
-      - `scopes` - Oauth流程中, APP能够申请的权限范围
       - `redirect_uris` - Oauth授权的回调接口, 可以配置多个, 以逗号隔开
       - `creation_date` - Oauth Client创建的时间
     - `JWT Secret` - 系统自动生成, Partner可以Reset, 用作JWT的签名密钥
@@ -160,7 +160,6 @@
   - `GET /api/v1/partner/sites` - 获取当前Partner的所有客户的站点信息   
   - `POST /api/v1/partner/sites` - 开户，新建一个站点   
   - `PUT /api/v1/partner/sites/{site_id}` - 更新Partner的某一个客户的站点信息
-  - `DELETE /api/v1/partner/sites/{site_id}` - 给自己的客户销户，删除这个客户的站点信息
 
 ### Get a Site
 
@@ -320,6 +319,7 @@
     - `phone` - `optional`, string, 登录agent的phone
     - `title` - `optional`, string, 登录agent的title
     - `bio` - `optional`, string, 登录agent的bio
+    - `avatar` - `optional`, string, 登录agent的头像地址
     - `isAdmin` - `optional`, boolean, 登录的agent是否为administrator
 
 #### JWT
@@ -354,16 +354,49 @@
   - `lastName` - 登录Agent的last name
   - `title` - 登录Agent的title
   - `bio` - 登录Agent的bio
+  - `avatar` - 登录agent的头像地址
   - `isAdmin` - 登录的用户是否为admin
 
 
-* 移动端接收JWT Token
+* 手机和Desktop关于SSO登录的实现
+
+  手机端和Desktop针对上述SAML 2.0 和 JWT 的实现方案采用与浏览器一致的方式, 在APP中打开页面进行SSO的认证, 认证结束以后再通过特定的接口登录到Chat Server中。Desktop可以直接打开SSO Login页面, 而手机则通过WebView加载SSO Login页面来通过验证。
+
+  1. APP一般为每一个客户端单独编译, 编译时会指定partner的server地址, 如`https://partnerdomain.comm100.com/`
+  
+  2. 在APP打开以后会访问Server获取该Partner的SSO配置信息 `GET https://partnerdomain.comm100.com/sso/type` , 该接口返回如下数据
+
+      ```json
+      {
+        "sso": "SAML" // "JWT", "None"
+      }
+      ```
+
+  2. 如果配置了SSO, APP会通过SSO Login进行SSO登录验证, 登录地址 `https://partnerdomain.comm100.com/sso/login?appendChatServerToken=true&return_to={return_to_url}`
+    
+    - iOS和Android会在WebView中加载上述登录页面, `return_to_url`为 `comm100://login`
+    - Desktop 直接打开上述登录页面, `return_to_url`为桌面版的主页面 `https://partnerdomain.comm100.com/routerserver/electron/index.html`
+
+  3. 登录完成根据`appendChatServerToken`参数的值, 如果为true, 需要后端去chatserver请求一个token, 请求方法 `GET https://partnerdomain.comm100.com/chatserver/acquireToken?agentId={id}&magicString={xxx}`, 这是一个内部接口, 需要使用magicString来验证, 避免外部调用, 返回Token
+
+      ```json
+      {
+        "token": "xxx"
+      }
+      ```
+   
+  4. 然后将token的值附加到上述的`retur_to`的url中, 即跳回到`comm100://login?token={token}`或者 `https://partnerdomain.comm100.com/routerserver/electron/index.html?token={token}`
+
+  5. APP获取到这个`token`以后通过`token`直接登录, 该接口已经存在, 在手机端续会话时使用
+
+
+* 移动端接收Token
 
   移动App增加直接接收JWT/Chat Server Token登录认证的接口：  
 
    `comm100://login?jwt=xx.xxx.xx` or `comm100://login?token=xxx`
 
-  这个接口允许用户在打开上面的login接口的时候跳转到自己的APP中, 实现从自己的APP验证的业务, 用户验证完以后通过上面地址跳转回Comm100 APP
+  这个JWT接口允许用户在打开上面的login接口的时候跳转到自己的APP中, 实现从自己的APP验证的业务, 用户验证完以后通过上面地址跳转回Comm100 APP
     
  iOS  
     
@@ -379,38 +412,12 @@
     startActivity(intent); 
   ```
   
-* 手机和Desktop关于SSO登录的实现
-
-  手机端和Desktop一般会根据Partner的特殊情况单独编译, 每一个客户端编译时会指定partner的请求地址, 如`https://partnerdomain.comm100.com/`
-  
-  1. 在APP打开以后会访问Server获取该Partner的SSO配置信息
-
-  `GET https://partnerdomain.comm100.com/sso/type` 
-
-  - Return
-    - `sso`: `SAML` 或者 `JWT` 或者 `none`
-
-  2. 如果配置了SSO, APP会通过SSO Login进行SSO登录验证, 登录地址 `https://partnerdomain.comm100.com/sso/login?appendChatServerToken=true&return_to={return_to_url}`
-    - iOS和Android会在WebView中加载上述登录页面, `return_to_url`为 `comm100://login`
-    - Desktop 直接打开上述登录页面, `return_to_url`为桌面版的主页面 `https://partnerdomain.comm100.com/routerserver/electron/index.html`
-
-  3. 登录完成根据`appendChatServerToken`参数的值, 如果为true, 需要后端去chatserver请求一个token, 请求方法
-  
-   `GET https://partnerdomain.comm100.com/chatserver/acquireToken?agentId={id}&magicString={xxx}`, 这是一个内部接口, 需要使用magicString来验证, 避免外部调用
-   
-   返回一个token的值
-   
-  4. 然后将token的值附加到上述的`retur_to`的url中, 即跳回到`comm100://login?token={token}`或者 `https://partnerdomain.comm100.com/routerserver/electron/index.html?token={token}`
-
-  5. APP通过token直接登录, 该接口已经存在, 在手机端续会话时使用
-
-
 
 ## Remove Header, Menu, Footer
 
-在使用页面集成时, 用户可以通过传入`bodyOnly`参数来控制显示的页面只有主体部分。技术上只要页面加载不同的MasterPage文件即可。
+后台页面区分有没有Header/Menu/Footer采用加载不同的MasterPage来实现, 目前的MasterPage已经提取到公共部分, 后台模块加载MasterPage文件时通过虚拟目录文件来实现, 因此针对不显示Header/Menu/Footer的后台页面只需要动态虚拟不同的MasterPage文件即可。
 
-`https://partnerdomain.comm100.com/livechat/campaign.aspx?siteId=1000001&bodyOnly=true&planId=1`
+在使用页面集成时, 用户可以通过传入`bodyOnly`参数来控制显示的页面只有主体部分。`https://partnerdomain.comm100.com/livechat/campaign.aspx?siteId=1000001&bodyOnly=true&planId=1`, 虚拟目录提供者只要根据这个参数返回对应的文件。
 
 ### 多个MasterPage的技术实现
 
@@ -423,20 +430,7 @@
 
 ## CSS Control
 
-目前后台的前端样式比较乱, 无法完全公开给Partner用户去定义, 因此在Portal做前后端分离之前所有的样式定义由Comm100为Partner客户完成, 不过这部分需要收取一定费用来做。待后台整体完成前后端分离, 跟Agent Console使用相同的前端样式以后, 可以公开这部分样式给用户, 让Partner用户自行修改这部分样式.
-
-### Web Form Page
-
-Agent访问后台页面时, 根据url获取当前为哪一个Partner的站点, 然后根据Partner的配置信息加载相应的样式, 因为样式相关的会涉及大量的css文件以及其他的如图像, 字体等资源。 因此这些大量的资源采用文件形式存储, 数据库中仅存放主题名字, 方案同Livechat100项目中做的White label的样式方案。
-
-服务器对所有样式相关的css和资源根据不同的主题采用服务器rewrite来返回, 这样不需要修改页面中的引用。
-
-
-### 前后端分离
-
-1. 将公共控件库的样式公开给Partner, Parnter可以参考原先的样式修改为符合自己视觉设计的样式
-2. Partner将修改后的样式上传到Comm100 Partner中
-3. Comm100加载前端页面时, 根据Partner的配置动态返回css文件
+因为后台样式设计大量的CSS文件, 以及对应的图片/字体等资源, 所以针对Partner自定义的样式资源文件采用文件系统管理, 而不是通过数据库管理, 数据库会为每一个Partner存放一个Theme名字, 这个名字会对应到具体文件中的一个目录, 在加载某一个Partner的样式时会根据Partner的配置rewrite到具体的目录下面。
 
 ## Integrable Pages
 
@@ -445,7 +439,6 @@ Agent访问后台页面时, 根据url获取当前为哪一个Partner的站点, �
 | Page | Module | Url | Parameters |
 | :- | - | - | :- |
 | Dashboard | LiveChatDashboard | `/dashboard.aspx` | `siteId` |
-| Agent Console | LiveChat | `/agentConsole.aspx` | `siteId` |
 | APPs | LiveChat | `/apps.aspx` | `siteId` |
 | Installation | LiveChatFunc | `/installation.aspx` | `siteId` |
 | Campaign - Chat Button | LiveChatFunc | `/campaign/chatButton.aspx` | `siteId` `campaignId` |
@@ -500,18 +493,234 @@ Agent访问后台页面时, 根据url获取当前为哪一个Partner的站点, �
 | Report - Chatbot | Report | x | |
 
 
-## Agent Console Iframe API
+## Agent Console Integration API
 
-用Iframe加载Agent Console时, Iframe外面需要跟内部进行交互, 可以使用Comm100 Agent Console SDK, API接口同Agent Console Extension, 使用方法也一致。
+### Iframe Load Agent Console
 
+Partner可以使用iframe的方式加载Agent Console
+
+`https://partnerdomain.comm100.com/livechat/agentconsole.aspx?siteId={siteId}`
+
+Parameters:
+  - `modules` - 显示的模块可以为`visitors`, `chats`, `agents`, `header`, `tab` 可以为多个, 以逗号隔开, 默认包含所有模块
+    - `header` - 头部
+    - `nav` - 左侧导航栏
+    - `visitors` - visitors 模块
+    - `chats` - my chats 模块
+    - `agents` - agents 模块
+
+### Agent Console SDK
+
+在页面上使用iframe加载Agent Console以后, Partner可以在宿主页面中引用Agent Console SDK的js文件来跟Iframe中的Agent Console进行交互
+
+#### 初始化
 ```javascript
 Comm100AgentConsoleAPI.onReady = function() {
-  Comm100AgentConsoleAPI.init();
-
-  // 监听聊天开始
-  Comm100AgentConsoleAPI.on('agentconsole.chats.chatStart');
+  const app = Comm100AgentConsoleAPI.init();
 }
 ```
+
+#### General
+
+* Properties
+
+  - 获取或者设置Agent状态
+
+  ```javascript
+    cosnt status = 'away';
+    app.set('agentconsole.status', status);
+  ```
+
+  - 获取或者设置当前选中的模块
+
+  ```javascript
+    const module = 'visitors,chats'; // chats
+    app.set('agentconsole.modules', module);
+  ```
+
+  - 获取或设置当前选中的模块
+
+  ```javascript
+    app.set('agentconsole.nav', 'visitors');
+  ```
+
+* Actions
+
+  - Agent 登录
+
+  ```javascript
+  app.do('agentconsole.login',{
+        type: 'jwt',
+        data: 'xxx.xxx.xx',
+        // type: 'password',
+        // data: {
+        //   email: 'allon@comm100.com',
+        //   password: 'Aa000000',
+        // },
+      }
+    );
+  ```
+
+  - Agent 登出
+
+  ```javascript
+  const force = true;
+  app.do('agentconsole.logout', force);
+  ```
+
+* Events
+
+  - Agent 状态变化
+  
+  ```javascript
+  app.on('agentconsole.agent.statusChanged', (newStatus) => {});
+  ```
+
+
+#### Visitors Module
+
+* Properties
+
+  - Filter - 可以获取或者设置当前访客列表的Filter条件
+  ```javascript
+  const filterCondition = app.get('agentconsole.visitors.filter');
+
+  const filter = {
+    type: 'custom', // 'all_visitors', 'all_chats', 'my_chats'
+    conditions: [
+      {
+        field: 'Status',
+        operate: 'is',
+        value: 'Transferring',
+      },
+      // ...
+    ],
+  };
+
+  app.set('agentconsole.visitors.filter', filter);
+  ```
+
+  - Columns - 可以获取或者设置当前访客列表显示的列信息
+
+  ```javascript
+  const visibleColumns = app.get('agentconsole.visitors.columns');
+
+  const columns = [
+    {
+      field: 'Status',
+      width: 40,
+    },
+    {
+      field: 'Info',
+      with: 300,
+    },
+    // ...
+  ];
+
+  app.set('agentconsole.visitors.columns', columns);
+  ```
+    
+  - Visitors - 可以获取当前列表中的所有访客
+
+  ```javascript
+    const visitors = app.get('agentconsole.visitors');
+  ```
+
+* Events
+
+  - 访客进入站点
+  ```javascript
+  app.on('agentconsole.visitor.enterSite', function(visitor) {} );
+  ```
+
+  - 访客请求聊天
+  ```javascript
+  app.on('agentconsole.visitor.requestChat', function(visitor) {} );
+  ```
+
+  - 访客进入队列
+  ```javascript
+  app.on('agentconsole.visitor.enterQueue', function(visitor) {} );
+  ```
+
+  - 访客有新的回复
+  ```javascript
+  app.on('agentconsole.visitor.newResponse', function(visitor) {} );
+  ```
+
+  - 访客聊天被转移
+  ```javascript
+  app.on('agentconsole.visitor.transferring', function(visitor) {} );
+  ```
+
+  - 访客细分变化
+  ```javascript
+  app.on('agentconsole.visitor.segmentChanged', function(visitor) {} );
+  ```
+
+  - 访客离开站点
+  ```javascript
+  app.on('agentconsole.visitor.outOfSite', function(visitor) {} );
+  ```
+
+#### Chats Module
+
+* Properties
+
+  - 获取当前列表中的所有正在进行的聊天
+  ```javascript
+  const chats = app.get('agentconsole.chats');
+  ```
+
+  - 获取或者设置当前选中的聊天
+  ```javascript
+  const selectedId = app.get('agentconsole.chats.selectd')
+
+  const chatId = 111;
+  
+  app.set('agentconsole.chats.selected', chatId);
+  ```
+
+* Events
+
+  - selectChanged - 当前选中的聊天切换
+  ```javascript
+  app.on('agentconsole.chats.selectChanged', function(chat) {} );
+  ```
+  - chatStarted - 聊天开始
+  ```javascript
+  app.on('agentconsole.chats.chatStarted', function(chat) {} );
+  ```
+
+  - chatEnded - 聊天结束
+  ```javascript
+  app.on('agentconsole.chats.chatEnded', function(chat) {} );
+  ```
+
+  - messageReceived - 收到聊天消息
+  ```javascript
+  app.on('agentconsole.chats.messageReceived', function(chatId, message) {} );
+  ```
+
+* Actions
+
+  - 向指定聊天发送一条文本消息
+  ```javascript
+    app.do('agentconsole.chats.send', chatId, message);
+  ```
+  - 向当前聊天发送一条文本消息
+  ```javascript
+  app.do('agentconsole.chat.send', message);
+  ```
+  - 在当前聊天输入框中填入消息
+  ```javascript
+  app.do('agentconsole.chat.input', message);
+  ```
+  - 在当前聊天输入框中插入消息
+  ```javascript
+  app.on('agentConsole.chat.insert', message);
+  ```
+
 
 # API Integration
 
@@ -525,8 +734,6 @@ Partner 可以在自己的管理界面中增加一个Oauth Client, 获得对应�
   - `redirect_uri` - 授权以后跳转的uri, 一般为用户的
   - `client_id` - 系统自动生成, Oauth中的client_id
   - `client_secret` - 系统自动生成, Oauth中的client_secret
-
-
 
 ### Oauth Flow
 
@@ -560,290 +767,3 @@ Partner 可以在自己的管理界面中增加一个Oauth Client, 获得对应�
 
 ### Report API
   用户可以通过Report API获取到报表数据，集成到自己的报表系统中，ReportApi的详情可参考[Report API](https://github.com/Comm100/restful-api/blob/master/report-api.md)。
-
-# Component Integration
-
-通过引入Comm100的组件代码将Comm100的功能集成Partner的页面中，这种方式需要Partner的终端支持Comm100的组件(可执行js). 用户可以通过这些组件重新编译生成自己的客户端。 现阶段只支持Agent Console部分模块的组件集成。 组件包含了UI和功能, 也提供接口供Partner使用, 可以定义一定的逻辑。
-
-## Agent Console Component Integration
-
-  引用Comm100 Agent Console的JS Client SDK可以在自己的页面中轻松构建Agent Console, 可供用户集成的模块为visitors和chats， 不包含头，脚，左侧tab, 渲染时会在用户提供的dom中创建iframe构造Agent Console, 避免里面的代码或样式受外面影响。
-
-  ```javascript
-    const container = document.getElement('container');
-    const config = {
-      server: 'https://partnerdomain.comm100.com',
-      modules: ['visitors', 'chats'],
-      visitors: {
-        enterSite: enterSiteHandler,
-        //...
-      },
-      chats: {
-        startChat: startChatHandler,
-        //...
-      },
-      display: 'visitors',  // default
-    }
-    const app = Comm100AgentConsole.init(container, config);    // 初始化app
-    app.do('agentConsole.login',{
-        type: 'jwt',
-        data: 'xxx.xxx.xx',
-        // type: 'password',
-        // data: {
-        //   email: 'allon@comm100.com',
-        //   password: 'Aa000000',
-        // },
-      }
-    );
-    app.do('agentConsole.display', 'chats'); // show chats module
-
-    const visitors = app.get('agentConsole.visitors'); // get current visitor list
-
-    app.do('agentConsole.chat.acceptChat', chatId); // accept chat
-  ```
-
-  app提供的接口跟之前的Agent Console API以及Visitor API类似, 不过这里都是同步调用, 不会返回promise
-
-  1. GET - 获取指定的数据
-
-  ```javascript
-  /**
-   *  @param {string} name - name of data
-   *  @return {any} return
-   */
-  const visitor = app.get(name);
-  ```
-
-  2. SET - 设置指定的数据
-
-  ```javascript
-  /**
-   * @param {string} name - name of data
-   * @param {any} value
-   * @return {void} return
-   */ 
-  app.set(name, vlaue);
-  ```
-
-  3. ON - 监听指定的事件, 在事件发生时会调用callback
-
-  ```javascript
-  /**
-   * @param {string} event - name of event
-   * @param {function} callback
-   * @return {void} return
-   */
-  app.on(event, function () {} )
-  ```
-
-  4. DO - 执行指定的动作
-
-  ```javascript
-  /**
-   * @param {string} action - name of action
-   * @param {...any} args - any args required
-   * @return {void} return
-   */
-  app.do(action, ...args)
-  ```
-## Initialize
-
-```javascript
-  const app = Comm100AgentConsole.init(container, config);    // 初始化app
-```
-+ Config 说明
-  - `server` - `required` `string` 指定 `ChatServer` 的地址
-  - `modules` - `required` `array` 指定需要加载的模块, 可以为 `visitors` `chats`
-  - `style` - `optional` `string` 指定Agent Console 的样式, 如果不指定就加载Comm100的默认样式
-  - `visitors` - `optional` `object` 指定 `visitors` 模块中的配置和事件回调函数
-  - `chats` - `optional` `object` 指定 `chats` 模块中的配置和事件回调函数
-  - `display` - `optional` `string` 指定当前显示的模块, 可以为 `visitors` 或 `chats`, 默认为 `visitors`
-
-## General
-
-### Properties
-
-- 获取或者设置Agent状态
-  ```javascript
-  cosnt status = 'away';
-  app.set('agentconsole.status', status);
-  ```
-
-- 获取或者设置当前选中的模块
-  ```javascript
-  const module = 'visitors'; // chats
-  app.set('agentconsole.display', module);
-  ```
-
-### Actions
-
-- Agent 登录
-  ```javascript
-  app.do('agentconsole.login',{
-        type: 'jwt',
-        data: 'xxx.xxx.xx',
-        // type: 'password',
-        // data: {
-        //   email: 'allon@comm100.com',
-        //   password: 'Aa000000',
-        // },
-      }
-    );
-  ```
-
-- Agent 登出
-  ```javascript
-  const force = true;
-  app.do('agentconsole.logout', force);
-  ```
-
-### Events
-
-- Agent 状态变化
-  ```javascript
-  app.on('agentconsole.agent.statusChanged', (newStatus) => {});
-  ```
-
-
-## Visitors Module
-
-### Properties
-
-- Filter - 可以获取或者设置当前访客列表的Filter条件
-  ```javascript
-  const filterCondition = app.get('agentconsole.visitors.filter');
-
-  const filter = {
-    type: 'custom', // 'all_visitors', 'all_chats', 'my_chats'
-    conditions: [
-      {
-        field: 'Status',
-        operate: 'is',
-        value: 'Transferring',
-      },
-      // ...
-    ],
-  };
-
-  app.set('agentconsole.visitors.filter', filter);
-  ```
-
-- Columns - 可以获取或者设置当前访客列表显示的列信息
-  ```javascript
-  const visibleColumns = app.get('agentconsole.visitors.columns');
-
-  const columns = [
-    {
-      field: 'Status',
-      width: 40,
-    },
-    {
-      field: 'Info',
-      with: 300,
-    },
-    // ...
-  ];
-
-  app.set('agentconsole.visitors.columns', columns);
-  ```
-  
-- Visitors - 可以获取当前列表中的所有访客
-
-```javascript
-  const visitors = app.get('agentconsole.visitors');
-```
-### Events
-
-- 访客进入站点
-  ```javascript
-  app.on('agentconsole.visitor.enterSite', function(visitor) {} );
-  ```
-- 访客请求聊天
-  ```javascript
-  app.on('agentconsole.visitor.requestChat', function(visitor) {} );
-  ```
-- 访客离开站点
-  ```javascript
-  app.on('agentconsole.visitor.outOfSite', function(visitor) {} );
-  ```
-
-### Actions
-
-  - invite - 邀请当前访客进行聊天
-  ```javascript
-    app.do('agentconsole.visitor.invite', visitorId); // invite chat
-  ```
-  - capture - 将当前访客固定在访客列表中，不管访客是否退出站点都显示在列表中
-  ```javascript
-    app.do('agentconsole.visitor.capture', visitorId); // capture chat
-  ```
-  - release - 将当前访客从capture状态释放，访客退出站点后将从访客列表中消失
-  ```javascript
-    app.do('agentconsole.visitor.release', visitorId); // release chat
-  ```
-  - ban - 禁止当前访客聊天，且让访客不显示在列表中
-  ```javascript
-    app.do('agentconsole.visitor.ban', visitorId); // ban chat
-  ```
-
-## Chats Module
-
-### Properties
-
-- 获取当前列表中的所有正在进行的聊天
-  ```javascript
-  const chats = app.get('agentconsole.chats');
-  ```
-
-- 获取或者设置当前选中的聊天
-  ```javascript
-  const selectedId = app.get('agentconsole.chats.selectd')
-
-  const chatId = 111;
-  
-  app.set('agentconsole.chats.selected', chatId);
-  ```
-
-### Events
-
-- selectChanged - 当前选中的聊天切换
-  ```javascript
-  app.on('agentconsole.chats.selectChanged', function(chat) {} );
-  ```
-- chatStarted - 聊天开始
-  ```javascript
-  app.on('agentconsole.chats.chatStarted', function(chat) {} );
-  ```
-
-- chatEnded - 聊天结束
-  ```javascript
-  app.on('agentconsole.chats.chatEnded', function(chat) {} );
-  ```
-
-- messageReceived - 收到聊天消息
-  ```javascript
-  app.on('agentconsole.chats.messageReceived', function(chatId, message) {} );
-  ```
-
-### Actions
-
-  - 离开当前聊天 
-  ```javascript
-    app.do('agentconsole.chat.leave');
-  ```
-  - 向指定聊天发送一条文本消息
-  ```javascript
-    app.do('agentconsole.chats.send', chatId, message);
-  ```
-  - 向当前聊天发送一条文本消息
-  ```javascript
-  app.do('agentconsole.chat.send', message);
-  ```
-  - 在当前聊天输入框中填入消息
-  ```javascript
-  app.do('agentconsole.chat.input', message);
-  ```
-  - 在当前聊天输入框中插入消息
-  ```javascript
-  app.on('agentConsole.chat.insert', message);
-  ```
