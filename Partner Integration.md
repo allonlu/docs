@@ -666,20 +666,20 @@ Partner 可以在自己的管理界面中增加一个Oauth Client, 获得对应�
 - 获取或者设置Agent状态
   ```javascript
   cosnt status = 'away';
-  app.set('agentConsole.status', status);
+  app.set('agentconsole.status', status);
   ```
 
 - 获取或者设置当前选中的模块
   ```javascript
   const module = 'visitors'; // chats
-  app.set('agentConsole.display', module);
+  app.set('agentconsole.display', module);
   ```
 
 ### Actions
 
 - Agent 登录
   ```javascript
-  app.do('agentConsole.login',{
+  app.do('agentconsole.login',{
         type: 'jwt',
         data: 'xxx.xxx.xx',
         // type: 'password',
@@ -691,12 +691,17 @@ Partner 可以在自己的管理界面中增加一个Oauth Client, 获得对应�
     );
   ```
 
-- Agent 状态变化
-
 - Agent 登出
   ```javascript
   const force = true;
-  app.do('agentConsole.logout', force);
+  app.do('agentconsole.logout', force);
+  ```
+
+### Events
+
+- Agent 状态变化
+  ```javascript
+  app.on('agentconsole.agent.statusChanged', (newStatus) => {});
   ```
 
 
@@ -706,7 +711,7 @@ Partner 可以在自己的管理界面中增加一个Oauth Client, 获得对应�
 
 - Filter - 可以获取或者设置当前访客列表的Filter条件
   ```javascript
-  const filterCondition = app.get('agentConsole.visitors.filter');
+  const filterCondition = app.get('agentconsole.visitors.filter');
 
   const filter = {
     type: 'custom', // 'all_visitors', 'all_chats', 'my_chats'
@@ -720,12 +725,12 @@ Partner 可以在自己的管理界面中增加一个Oauth Client, 获得对应�
     ],
   };
 
-  app.set('agentConsole.visitors.filter', filter);
+  app.set('agentconsole.visitors.filter', filter);
   ```
 
 - Columns - 可以获取或者设置当前访客列表显示的列信息
   ```javascript
-  const visibleColumns = app.get('agentConsole.visitors.columns');
+  const visibleColumns = app.get('agentconsole.visitors.columns');
 
   const columns = [
     {
@@ -739,46 +744,46 @@ Partner 可以在自己的管理界面中增加一个Oauth Client, 获得对应�
     // ...
   ];
 
-  app.set('agentConsole.visitors.columns', columns);
+  app.set('agentconsole.visitors.columns', columns);
   ```
   
 - Visitors - 可以获取当前列表中的所有访客
 
 ```javascript
-  const visitors = app.get('agentConsole.visitors');
+  const visitors = app.get('agentconsole.visitors');
 ```
 ### Events
 
 - 访客进入站点
   ```javascript
-  app.on('agentConsole.visitor.enterSite', function(visitor) {} );
+  app.on('agentconsole.visitor.enterSite', function(visitor) {} );
   ```
 - 访客请求聊天
   ```javascript
-  app.on('agentConsole.visitor.requestChat', function(visitor) {} );
+  app.on('agentconsole.visitor.requestChat', function(visitor) {} );
   ```
 - 访客离开站点
   ```javascript
-  app.on('agentConsole.visitor.outOfSite', function(visitor) {} );
+  app.on('agentconsole.visitor.outOfSite', function(visitor) {} );
   ```
 
 ### Actions
 
   - invite - 邀请当前访客进行聊天
   ```javascript
-    app.do('agentConsole.visitor.invite', visitorId); // invite chat
+    app.do('agentconsole.visitor.invite', visitorId); // invite chat
   ```
   - capture - 将当前访客固定在访客列表中，不管访客是否退出站点都显示在列表中
   ```javascript
-    app.do('agentConsole.visitor.capture', visitorId); // capture chat
+    app.do('agentconsole.visitor.capture', visitorId); // capture chat
   ```
   - release - 将当前访客从capture状态释放，访客退出站点后将从访客列表中消失
   ```javascript
-    app.do('agentConsole.visitor.release', visitorId); // release chat
+    app.do('agentconsole.visitor.release', visitorId); // release chat
   ```
   - ban - 禁止当前访客聊天，且让访客不显示在列表中
   ```javascript
-    app.do('agentConsole.visitor.ban', visitorId); // ban chat
+    app.do('agentconsole.visitor.ban', visitorId); // ban chat
   ```
 
 ## Chats Module
@@ -787,56 +792,56 @@ Partner 可以在自己的管理界面中增加一个Oauth Client, 获得对应�
 
 - 获取当前列表中的所有正在进行的聊天
   ```javascript
-  const chats = app.get('agentConsole.chats');
+  const chats = app.get('agentconsole.chats');
   ```
 
 - 获取或者设置当前选中的聊天
   ```javascript
-  const selectedId = app.get('agentConsole.chats.selectd')
+  const selectedId = app.get('agentconsole.chats.selectd')
 
   const chatId = 111;
   
-  app.set('agentConsole.chats.selected', chatId);
+  app.set('agentconsole.chats.selected', chatId);
   ```
 
 ### Events
 
 - selectChanged - 当前选中的聊天切换
   ```javascript
-  app.on('agentConsole.chats.selectChanged', function(chat) {} );
+  app.on('agentconsole.chats.selectChanged', function(chat) {} );
   ```
 - chatStarted - 聊天开始
   ```javascript
-  app.on('agentConsole.chats.chatStarted', function(chat) {} );
+  app.on('agentconsole.chats.chatStarted', function(chat) {} );
   ```
 
 - chatEnded - 聊天结束
   ```javascript
-  app.on('agentConsole.chats.chatEnded', function(chat) {} );
+  app.on('agentconsole.chats.chatEnded', function(chat) {} );
   ```
 
 - messageReceived - 收到聊天消息
   ```javascript
-  app.on('agentConsole.chats.messageReceived', function(chatId, message) {} );
+  app.on('agentconsole.chats.messageReceived', function(chatId, message) {} );
   ```
 
 ### Actions
 
   - 离开当前聊天 
   ```javascript
-    app.do('agentConsole.chat.leave');
+    app.do('agentconsole.chat.leave');
   ```
   - 向指定聊天发送一条文本消息
   ```javascript
-    app.do('agentConsole.chats.send', chatId, message);
+    app.do('agentconsole.chats.send', chatId, message);
   ```
   - 向当前聊天发送一条文本消息
   ```javascript
-  app.do('agentConsole.chat.send', message);
+  app.do('agentconsole.chat.send', message);
   ```
   - 在当前聊天输入框中填入消息
   ```javascript
-  app.do.('agentConsole.chat.input', message);
+  app.do('agentconsole.chat.input', message);
   ```
   - 在当前聊天输入框中插入消息
   ```javascript
