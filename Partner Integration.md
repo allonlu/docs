@@ -28,11 +28,12 @@
   企业可以通过Comm100提供的入口申请成为一个Partner，申请的过程中需要提供企业的名字、联系人及其电话号码、邮箱及其他一些必要信息，申请提交后由Comm100进行审核，审核通过以后Comm100会给企业生成一个Parter账号，该账号可以用来登录Partner应用系统。Comm100对于Partner的审核过程，包括资质审核、与Partner沟通使用说明、合作方式等。
 
 ### Partner管理系统及功能描述
-  Comm100为Partner提供管理平台, 用户管理Partner的配置信息以及Partner下面的所有站点信息。
+  Comm100为Partner提供管理平台, 这是一个单独的系统, 只供Partner去使用,  可以管理Partner的配置信息以及Partner下面的所有站点信息。
 
-  1. 登录 - Partner可以使用Parnter账号信息登录Partner管理
-    - `username` - 登录Partner管理系统的username
+  1. 登录 - Partner可以使用Parnter账号信息登录Partner管理, 每个Partner账号暂只提供一个账号, 不提供权限管理和控制
+    - `email` - 登录Partner管理系统的username
     - `password` - 登录Partner管理系统的password
+
   2. Partner基本信息 - Partner可以修改自己的基本信息，包括联系人信息、公司信息等。
     - `company` - Partner的公司名称
     - `website` - Partner的公司网站
@@ -42,14 +43,19 @@
     - `contact.phone` - Partner的联系人电话
     - `contact.title` - Partner的联系人title
     - `isActive` - 该Partner是否已激活, 由Comm100来控制数据库中的该值, Partner不能修改
+  
   3. Partner配置Comm100产品品牌信息, 这些品牌信息会显示在用户的的Portal前端
     - `branding` - Comm100产品品牌名字
     - `productName` - LiveChat产品名字
-    - `logo` - Comm100产品的logo
-  4. <font color=red>Partner可以配置前端样式</font>
+    - `logo` - 用户可以设置Comm100产品的logo, 显示在系统的后台
+      - `favicon` - 显示在后台页面头部的favicon
+      - `logo` - 显示在后台头上的logo
+  
+  4. Partner可以配置前端样式
     - Phase I: 在目前的产品框架下，Comm100需要根据客户的需求定义前端样式文件, 配置到数据库中, 这个配置和定义不对Partner开放, 原则上只接受简单的样式定制, 如主题颜色的修改
       - 因为当前的产品的样式不是统一的, 后台的各个模块有部分样式都是独立的, 并且Live Chat 和Account的样式都是独立维护的, 而且这些样式跟Agent的样式又是不一样的, 所以目前无法公开这部分样式让用户自行修改, 如果单从这个层面去将样式统一工作量会比较大, 而且接下去前端改版时会做样式的统一, 所以在前端改版之前如果Partner需要定制样式就需要付费由Comm100来统一修改。
     - Phase II: Comm100统一所有的前端样式, 开放所有的前端样式给用户, 可以让用户自定义样式, 覆盖Comm100默认的样式
+
   5. Partner管理客户站点
     - 开户: Partner可以通过开户功能手动为客户建站, 开户需要输入以下信息
       - `email`
@@ -60,6 +66,7 @@
       - `website`
       - `country`
       - `phone`
+    
     - 站点列表： 显示当前客户的站点信息
       - `id` - 站点Id
       - `company` - 站点的公司名字
@@ -67,23 +74,32 @@
       - `agents` - 站点中的所有Agent, 显示Agent的Email
       - `maxAgents` - 站点最大Agent数量
       - `contact` - 站点联系人信息
+      - `createTime` - 站点创建的时间
+      - `status` - 站点的状态, 为 `trial` 或者 `paying`
+        - `paying` - 针对试用期的站点可以点击转成付费账号, 如果是付费账号则不能转成试用期账号
       - `activated` - 站点是否已经激活
-        - `active` - 操作, 点击激活站点
+        - `active` - 操作, 点击可以激活站点
       - `disabled` - 站点是否已经激活
-        - `disable/enable` - 操作, 点击禁用或者启用站点
+        - `disable/enable` - 操作, 点击可以禁用或者启用站点
+    
   6. Partner管理安全相关配置
-    - `Agent SSO` - Partner可以配置站点使用SSO来实现账号统一认证, 客户使用Partner系统中的账号在Partner的认证系统中进行身份认证, 而无需使用Comm100的账号系统进行认证。
-      - [SSO Settings](#sso-settings) -SSO配置
-    - `Partner API IP white list` - 使用Comm100的Partner API和Partner应用系统的IP白名单, 可以配置多条
-    - `Iframe Allow Domain` - Partner配置允许使用iframe调用的域名, 只有在配置列表中的域名会被允许, 这个会在页面加载时从http 头 `X-Frame-Options`返回
-    - `Oauth Client` - Partner作为Comm100的第三方应用需要调用Comm100 Restful API来访问用户数据时则必须申请OAuth客户端。Parnter可以新建/修改/删除`Oauth Client`, 界面上会显示当前的Oauth Client列表
-      - `client_id` - Oauth中的`client_id`, 在请求获取access_token时需要使用, 在添加Oauth Client时自动生成
-      - `client_secret`- Oauth的`client_secret`, 在请求获取access_token时使用，在添加Oauth Client时自动生成
-      - `redirect_uris` - Oauth授权的回调接口, 可以配置多个, 以逗号隔开
-      - `creation_date` - Oauth Client创建的时间
-    - `JWT Secret` - 系统自动生成, Partner可以Reset, 用作JWT的签名密钥
+      - `Partner API IP white list` - 使用Comm100的Partner API和Partner应用系统的IP白名单, 可以配置多条
+      - `Iframe Allow Domain` - Partner配置允许使用iframe调用的域名, 只有在配置列表中的域名会被允许, 这个会在页面加载时从http 头 `X-Frame-Options`返回
+      - `Oauth Client` - Partner可以自己生成Oauth Client, 用作Comm100 RESTful API的Oauth验证, 每个Parnter只有一个Oauth Client
+        - `client_id` - Oauth中的`client_id`, 在请求获取access_token时需要使用, 在添加Oauth Client时自动生成
+        - `client_secret`- Oauth的`client_secret`, 在请求获取access_token时使用，在添加Oauth Client时自动生成
+          - `reset_client` - Partner可以操作重置`client_secret`
+        - `redirect_uris` - Oauth授权的回调接口, 可以配置多个, 以逗号隔开
+        - `creation_date` - Oauth Client创建的时间
+      - `JWT Secret` - 系统自动生成, Partner可以Reset, 用作JWT的签名密钥
 
-  7. Partner可以将Comm100产品集成到自己的系统中
+  7. Site 安全相关配置
+    - 登录方式: Partner可以配置其下所有的站点是使用Comm100的登录还是使用SSO登录
+    - `Partner Agent SSO` - Partner可以配置SSO, 配置以后该Partner下面的所有站点的Agent都会使用这个SSO来进行登录。
+      - [SSO Settings](#sso-settings) -SSO配置
+    
+
+  8. Partner可以将Comm100产品集成到自己的系统中
     + 界面集成  
       - Partner可以直接使用链接或者iframe引入Live Chat后台管理界面到自己的产品中
       - Partner可以直接使用链接或者iframe引入Agent Console到自己的产品中
@@ -110,7 +126,7 @@
       JWT方式配置的登录出面，同SAML的`logoutUrl`
   + `other instructions`
     * `alg` Comm100只支持HS256的加密算法
-    * `signature` jwt的签名密钥使用上面的`apiKey`
+    * `signature` jwt的签名密钥使用上面的`JWT Secret`
 
 
 ### 安装部署: Comm100可以根据Partner的需求来选择系统的部署方案：
@@ -119,11 +135,10 @@
    + 根据用户提供的信息编译特定的Agent Console Desktop, iOS, Android的客户端
     - 不同的Partner的客户端不能登录到其他Partner下面的站点
 
-### <font color=red>收费方案</font>  (待讨论: Partner的客户的收费目前可考虑两种方案)
-  - Partner客户使用Comm100的billing系统, 然后根据Partner的实际签约情况进行相应的分成。    
-  - Partner直接向客户收取费用, 不使用Comm100的billing系统, Comm100再根据实际的Agent数量向Partner收取座席费用。
-
-
+### 收费方案 
+  - 每个Partner会根据情况配置好一个Plan, 不允许升级/切换, 允许试用, 如果在试用未转为正式账号, 在试用期结束以后将不能使用
+  - Comm100 对Partner下面的站点不会要求填写Billing信息, 但是Billing系统会为每个账号生成计费的账单
+  - Partner下面的站点由Partner自己向Partner收费, Comm100每月向Partner收取座席费用
 
 # Partner API
   Partner API 主要是供Partner使用, Partner可以使用这些API为他的客户开启Comm100的账号, 维护这些站点.
@@ -137,7 +152,7 @@
 
   Request Parameters:
   - `grant_type` - `password`, 指定获取token的方式为password
-  - `username` - partner name
+  - `email` - partner email
   - `password` - partner password
 
   Response示例：
@@ -160,6 +175,7 @@
   - `GET /api/v1/partner/sites` - 获取当前Partner的所有客户的站点信息   
   - `POST /api/v1/partner/sites` - 开户，新建一个站点   
   - `PUT /api/v1/partner/sites/{site_id}` - 更新Partner的某一个客户的站点信息
+  - `PUT /api/v1/partner/sites/{site_id}/paying` - 将试用期账号转为正式账号
 
 ### Get a Site
 
@@ -189,6 +205,7 @@
         },
         "activated": true, // 站点是否已激活
         "disabled": false, // 站点是否被禁用
+        "status" : "trial", // trial表示站点正在试用期, 如果是付费则是paying
       }
       ```
 
@@ -246,6 +263,7 @@
 
     + `JSON Data`
 
+      - `activated` - `optional` true/false, 站点是否已经激活
       - `disabled` - `optional` true/false, 站点是否被禁用
       - `company` - `optional` 站点的company
       - `website` - `optional` 站点的website
@@ -261,14 +279,14 @@
     返回修改后的Site对象
 
 
-### Delete a Site
+### Pay a site
 
-  `DELETE /api/v1/partner/sites/{site_id}`
+  `PUT /api/v1/partner/sites/{site_id}/paying`
 
   + Parameters
-
+    
     - `site_id` - `required` 站点的id
-
+  
   + Return
   
     返回空
@@ -504,20 +522,22 @@ Partner可以使用iframe的方式加载Agent Console
 Parameters:
   - `modules` - 显示的模块可以为`visitors`, `chats`, `agents`, `header`, `tab` 可以为多个, 以逗号隔开, 默认包含所有模块
     - `header` - 头部
-    - `nav` - 左侧导航栏
+    - `nav` - 左侧导航栏, 只有包含了该模块才会显示左侧的菜单
     - `visitors` - visitors 模块
     - `chats` - my chats 模块
     - `agents` - agents 模块
+
 
 ### Agent Console SDK
 
 在页面上使用iframe加载Agent Console以后, Partner可以在宿主页面中引用Agent Console SDK的js文件来跟Iframe中的Agent Console进行交互
 
 #### 初始化
+
+只需要在SDK的js文件加载完成以后调用即可。
+
 ```javascript
-Comm100AgentConsoleAPI.onReady = function() {
   const app = Comm100AgentConsoleAPI.init();
-}
 ```
 
 #### General
