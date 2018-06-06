@@ -91,7 +91,7 @@
           - `reset_client` - Partner可以操作重置`client_secret`
         - `redirect_uris` - Oauth授权的回调接口, 可以配置多个, 以逗号隔开
         - `creation_date` - Oauth Client创建的时间
-      - `JWT Secret` - 系统自动生成, Partner可以Reset, 用作JWT的签名密钥
+   
 
   7. Site 安全相关配置
     - 登录方式: Partner可以配置其下所有的站点是使用Comm100的登录还是使用SSO登录
@@ -124,6 +124,7 @@
     JWT方式配置的登录页面，Agent未登录时访问受限资源会跳转到该界面, 让用户去登录, 如：`https://partnerCompany.com/login`, 
   + `logoutUrl`   
       JWT方式配置的登录出面，同SAML的`logoutUrl`
+  + `JWT Secret` - 系统自动生成, Partner可以Reset, 用作JWT的签名密钥
   + `other instructions`
     * `alg` Comm100只支持HS256的加密算法
     * `signature` jwt的签名密钥使用上面的`JWT Secret`
@@ -137,7 +138,6 @@
 
 ### 收费方案 
   - 每个Partner会根据情况配置好一个Plan, 不允许升级/切换, 允许试用, 如果在试用未转为正式账号, 在试用期结束以后将不能使用
-  - Comm100 对Partner下面的站点不会要求填写Billing信息, 但是Billing系统会为每个账号生成计费的账单
   - Partner下面的站点由Partner自己向Partner收费, Comm100每月向Partner收取座席费用
 
 # Partner API
@@ -653,26 +653,6 @@ Parameters:
   app.on('agentconsole.visitor.enterSite', function(visitor) {} );
   ```
 
-  - 访客请求聊天
-  ```javascript
-  app.on('agentconsole.visitor.requestChat', function(visitor) {} );
-  ```
-
-  - 访客进入队列
-  ```javascript
-  app.on('agentconsole.visitor.enterQueue', function(visitor) {} );
-  ```
-
-  - 访客有新的回复
-  ```javascript
-  app.on('agentconsole.visitor.newResponse', function(visitor) {} );
-  ```
-
-  - 访客聊天被转移
-  ```javascript
-  app.on('agentconsole.visitor.transferring', function(visitor) {} );
-  ```
-
   - 访客细分变化
   ```javascript
   app.on('agentconsole.visitor.segmentChanged', function(visitor) {} );
@@ -694,14 +674,35 @@ Parameters:
 
   - 获取或者设置当前选中的聊天
   ```javascript
-  const selectedId = app.get('agentconsole.chats.selectd')
+  const selectedId = app.get('agentconsole.chats.selectedId')
 
   const chatId = 111;
   
-  app.set('agentconsole.chats.selected', chatId);
+  app.set('agentconsole.chats.selectedId', chatId);
   ```
 
 * Events
+
+  
+  - 请求聊天
+  ```javascript
+  app.on('agentconsole.chat.request', function(visitor) {} );
+  ```
+
+  - 聊天进入队列
+  ```javascript
+  app.on('agentconsole.chat.enterQueue', function(visitor) {} );
+  ```
+
+  - 聊天有新的回复
+  ```javascript
+  app.on('agentconsole.chat.newResponse', function(visitor) {} );
+  ```
+
+  - 聊天被转移
+  ```javascript
+  app.on('agentconsole.chat.transferring', function(visitor) {} );
+  ```
 
   - selectChanged - 当前选中的聊天切换
   ```javascript
@@ -728,17 +729,13 @@ Parameters:
   ```javascript
     app.do('agentconsole.chats.send', chatId, message);
   ```
-  - 向当前聊天发送一条文本消息
+  - 向指定的聊天输入框中填入消息
   ```javascript
-  app.do('agentconsole.chat.send', message);
+    app.do('agentconsole.chat.input', chatId, message);
   ```
-  - 在当前聊天输入框中填入消息
+  - 在指定的聊天输入框中插入消息
   ```javascript
-  app.do('agentconsole.chat.input', message);
-  ```
-  - 在当前聊天输入框中插入消息
-  ```javascript
-  app.on('agentConsole.chat.insert', message);
+    app.do('agentConsole.chat.insert', chatId, message);
   ```
 
 
