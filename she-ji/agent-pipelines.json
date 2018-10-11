@@ -1,0 +1,32 @@
+[
+    {
+        "pipeline": "auth",
+        "filters": [
+            "all"       
+        ]
+    },
+    {
+        "pipeline": "agent",
+        "filters": [
+            "login",
+            "logout",
+            "status",
+            "preference",
+            "set-timeout"            
+        ]
+    },
+    {
+        "pipeline": "chat",
+        "filters": [
+            "login",
+            "logout",
+            "status"   
+        ]
+    },
+    {
+        "pipeline": "",
+        "filters":[
+            
+        ] 
+    }
+]

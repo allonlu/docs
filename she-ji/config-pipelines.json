@@ -1,0 +1,8 @@
+[
+    {
+        "pipeline": "config",
+        "filters": [
+            "all"
+        ]
+    }
+]

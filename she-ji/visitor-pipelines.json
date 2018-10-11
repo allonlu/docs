@@ -1,0 +1,137 @@
+[
+    {
+        "pipeline": "visitor",
+        "endpoint": "chatserver/visitor",
+        "event-filters": [
+            "new-visitor",
+            "check-auto-invitation",
+            "confirm-auto-invitation",
+            "refuse-auto-invitation",
+            "check-manual-invitation",
+            "check-manual-invited",
+            "manual-invitation-showed",
+            "refuse-manual-invitation",
+            "check-ban",
+            "page-visit",
+            "set-custom-variables",
+            "get-visitor-custom-variables",
+            "page-heartbeat",
+            "check-dynamic-campaign",
+            "check-if-online",
+            "set-push-config",
+            "set-is-need-push"
+        ]
+    },
+    {
+        "pipeline": "offline-message",
+        "endpoint": "chatserver/offline-message",
+        "filters": [
+            "enter-offline-message",
+            "offline-message-heartbeat",
+            "submit-offline-message",
+            "close-offline-message"
+        ]
+    },
+    {
+        "pipeline": "pre-chat",
+        "filters": [  
+            "social-login",
+            "submit-sso-info",
+            "pre-chat-heartbeat",
+            "submit-pre-chat",
+            "close-pre-chat"
+        ]
+    },
+    {
+        "pipeline": "salesforce",
+        "filters": [
+            "request-chat"
+        ]
+    },
+    {
+        "pipeline": "dynamicCRM",
+        "filters": [
+
+        ]
+    },
+    {
+        "pipeline": "rule",
+        "filters": [
+            "new-visitor",
+            "set-custom-variables",
+            "check-auto-invitation",
+            "check-dynamic-campaign",
+            "request-chat"
+        ]
+    },
+    {
+        "pipeline": "chat",
+        "filters": [
+            "request-chat",
+            "restore-chat",
+            "get-chat-messages",
+            "send-messages",
+            "send-file",
+            "end-chat",
+            "email-transcript",
+            "get-chat-queue",
+            "submit-post-chat",
+            "submit-rating"
+        ]
+    },
+    {
+        "pipeline": "chat-bot",
+        "filters": [
+            "send-messages",
+            "helpful",
+            "not-helpful",
+            "select-question",
+            "submit-bot-form"
+        ]
+    }
+]
+
+
+{
+    "new-visitor": {
+        "base": "visitor-action",
+        "pipelines": [
+            {
+                "url": "visitor/new-visitor",  // 这个请求会新建visitor, 返回{ "visitorGuid" } 写cookie
+            },
+            {
+                "url": "route/new-visitor", // 这个请求会执行route规则, 修改该visitor的routeTarget
+            },
+            {
+                "url": "segments/new-visitor", // 这个请求会执行细分规则, 修改visitor的segments
+                "type": "async", 
+            }
+        ]
+    },
+    "request-chat": {
+        "base": "visitor-chat-action",  // 会检查当前访客的聊天状态
+        "pipelines": [
+            {
+                "url": "salesforce/request-chat",   // 这个请求会做salesforce identity, 更新visitor的salesforce信息
+            },
+            {
+                "url": "route/request-chat", // 这个请求会执行route规则, 修改访客的routeTarget
+            },
+            {
+                "url": "chat/request-chat", // 这个请求会生成聊天, 返回 { "chatGuid" } 
+            },
+            {
+                "url": "allocate/request-chat", // 这个请求会进行聊天的分配, 将agent加入到聊天中, 插入系统消息, 修改聊天状态
+            }, 
+        ]
+    },
+    "agent-send-message": {
+        "base": "agent-action", // agent-action, 会有一些常规的所有agent这边的动作都需要执行的pipeline, 如验证
+        "pipelines": [
+            {
+                "url": "chat/agent-send-message"
+            }
+        ]
+    },
+}
+

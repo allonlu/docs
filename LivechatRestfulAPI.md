@@ -54,7 +54,7 @@
     + `GET /api/v1/livechat/campaigns/{id}/language`  Get settings of Language for a campaign
     + `PUT /api/v1/livechat/campaigns/{id}/language`  Update settings of Language for a campaign
 
-### Campaign Json Format
+#### Campaign Json Format
   Campaign is represented as simple flat JSON objects with the following keys:  
 
   | Name | Type | Read-only | Mandatory | Description |    
@@ -64,7 +64,7 @@
   | `description` | string  | no | no | description of the campaign |
   | `language` | string  | no | yes | language of the campaign |
 
-### Get list of campaigns
+#### Get list of campaigns
 
   `GET /api/v1/livechat/campaigns`
 
@@ -72,7 +72,7 @@
 
   - Response: An array of Campaign Object.
 
-### Create a new campaign
+#### Create a new campaign
   
   `POST /api/v1/livechat/campaigns`
 
@@ -80,7 +80,7 @@
 
   - Response: Campaign Object
 
-### Update a campaign
+#### Update a campaign
     
   `PUT /api/v1/livechat/campaigns/{id}`
 
@@ -88,7 +88,7 @@
 
   - Response: Campaign Object
 
-### Remove a campaign 
+#### Remove a campaign 
   
   `DELETE /api/v1/livechat/campaigns/{id}`
 
