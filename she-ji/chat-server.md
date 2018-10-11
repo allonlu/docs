@@ -427,6 +427,71 @@
 ### agent.login
 ### agent.logout
 ### agent.set_preference
+
+### agent.set_status
+  
 ### agent_chat.send_message
 ### agent_chat.get_messages
 
+### agent.get_visitors
+
+### agent.get_chats
+
+### agent.get_unfinished_wrapups
+
+### agent.ban_visitor
+
+### agent.capture_visitor
+
+### agent.promote_visitor
+
+### agent.invite_visitor
+
+### agent.cancel_invite
+
+### agent.salesforce.create_contact
+
+### agent.salesforce.edit_contact
+
+### agent.salesforce.create_leads
+
+### agent.salesforce.edit_leads
+
+
+
+## RESTful API
+
+### /api/canned_messages
+
+### /api/canned_messages/use_records
+### /api/campaigns
+### /api/auto_invitations
+### /api/departments
+### /api/dashboard_messages
+### /api/dashboard_messages/{id}/read
+### /api/sounds
+### /api/segmentations
+### /api/custom_aways
+### /api/custom_variables
+
+### /api/extensions
+
+### /api/secure_forms
+
+### /api/chats
+### /api/offline_messages
+### /api/wrapups
+
+### /api/agents
+
+### /api/apps/salesforce/config
+### /api/apps/g2m/config
+
+### /api/apps/g2m/create_meeting
+
+## Sign in Server
+
+### agent.sign_in
+### agent.change_password
+
+### agent.email_activate_ip
