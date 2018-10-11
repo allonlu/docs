@@ -78,24 +78,9 @@
   ```json
   {
     "visitor.enter_site": {
-        "will": [
-          {
+
             "url": "visitor/check_ban",
-          },
-          {
-            "url": "visitor/check_domain",
-          }
-        ],
-        "do": [
-          {
-            "url": "visitor/create",
-          }
-        ],
-        "did": [
-          {
-            "url": "rule/segments",
-          }
-        ]
+
     },
     "visitor.page_visitor": {
         "do": [
@@ -111,16 +96,15 @@
             "url": "rule/dynamic_campaign",
           },
           {
-            "url": "visitor/check_domain",
+            "url": "rule/route",
           },
           {
-            "url": "rule/route",
+            "url": "visitor/check_domain",
           },
           {
             "url": "rule/conversion",
             "type": "async"
           }
-
         ]
     },
   }
@@ -217,6 +201,18 @@
     - create visitor - return visitor_id
   - did
     - calc segments
+
++ request params
+  - `visitorGuid`
+  - `campaignId`
+  - `landingPage`
+    - `title`
+    - `url`
+  - `referrer`
+  - `client`
+    - `ifSupportWebrtc`
+    - `timezone`
+    - `screenResolution`
   
 ### visiotr.set_custom_variables
   - do
@@ -228,6 +224,11 @@
     - calc route
     - trigger bot event
 
++ request params
+  - `visitorGuid`
+  - `cmapaignId`
+  - `customVariables` - map
+
 ### visitor.page_visit
   - do 
     - update visitor page visit info
@@ -238,14 +239,23 @@
     - check domain restriction
     - calc route
 
++ request params
+  - `visitorGuid`
+  - `campaignId`
+  - `page`
+    - `title`
+    - `url`
+
 ### visitor.page_heartbeat
   - do
     - update visitor latest activity time - return (offline/online)
-
-### invitation.check
-  - do 
+  - did
     - check manual invitation - return (none/pop)
     - check auto invitation - return (none/pop/delay pop)
+
++ request params
+  - `visitorGuid`
+  - `campaignId`
 
 ### invitation.show
   - will
@@ -255,9 +265,20 @@
   - did
     - record invitation log 
   
++ request params
+  - `visitorGuid`
+  - `campaignId`
+  - `invitationId`
+
+
 ### invitation.accept
   - did 
     - record invitation log
+
++ request params
+  - `visitorGuid`
+  - `campaignId`
+  - `invitationId`
 
 ### invitation.refuse
   - do
@@ -265,14 +286,56 @@
   - did
     - record invitation log
 
++ request params
+  - `visitorGuid`
+  - `campaignId`
+  - `invitationId`
+
 ### prechat.form_submit
   - do 
     - update visitor state
   - did
     - bot 
 
++ request params
+  - `visitorGuid`
+  - `form`
+    - `name`
+    - `email`
+    - `company`
+    - `phone`
+    - `department`
+    - `product`
+    - `ticketId`
+    - `custom` - dictionary<int, string>
+
 ### prechat.social_login
+
++ request params
+  - `visitorGuid`
+  - `name`
+  - `email`
+  - `avatar`
+  - `profileUrl`
+
 ### prechat.sso_login
+
++ request params
+  - `ssoId`
+  - `userId`
+  - `name`
+  - `email`
+  - `company`
+  - `phone`
+  - `department`
+  - `product`
+  - `fields`
+    - `name`
+    - `value`
+  - `variables`
+    - `name`
+    - `value`
+
 ### prechat.heartbeat
   - do
     - update visitor state
@@ -439,6 +502,8 @@
 
 ### agent.get_unfinished_wrapups
 
+### agent.agents
+
 ### agent.ban_visitor
 
 ### agent.capture_visitor
@@ -473,21 +538,19 @@
 ### /api/segmentations
 ### /api/custom_aways
 ### /api/custom_variables
-
 ### /api/extensions
-
 ### /api/secure_forms
-
 ### /api/chats
 ### /api/offline_messages
 ### /api/wrapups
-
-### /api/agents
 
 ### /api/apps/salesforce/config
 ### /api/apps/g2m/config
 
 ### /api/apps/g2m/create_meeting
+
+
+### /api/account/agent/change_password
 
 ## Sign in Server
 
@@ -495,3 +558,41 @@
 ### agent.change_password
 
 ### agent.email_activate_ip
+
+
+## Chat Server事件监听
+
+### 
+
+### server.register_service
+
+```json
+
+`/chatserver/chat/request`
+// salesforce 
+{
+  "events_handler": [
+    {
+      "event": "chat.request.will",
+      "handler": "salesforce/identify",
+      "type": "sync",
+    },
+    {
+      "event": "agent.salesforce.create_leads.do",
+      "handler": "salesforce/create_leads",
+    },
+  ]
+}
+```
+
+```json
+// rules
+{
+  "events_handler": [
+    {
+      "event": "visitor.enter_site.did",
+      "handler": "visitor/calc_segments",
+    }
+  ]
+}
+```
