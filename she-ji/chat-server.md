@@ -340,14 +340,22 @@
   - do
     - update visitor state
 
++ request params
+  - `visitorGuid`
+
 ### prechat.close
   - do 
     - update visitor state
 
++ request params
+  - `visitorGuid`
 
 ### offline_message.show
   - do 
     - update visitor state
+
++ request params
+  - `visitorGuid`
 
 ###  offline_message.submit
   - will
@@ -361,13 +369,36 @@
     - cacl segments
     - record offline message source (manual invitation)
 
++ request params
+  - `visitorGuid`
+  - `form`
+    - `name`
+    - `email`
+    - `phone`
+    - `company`
+    - `subject`
+    - `content`
+    - `attachment`
+  - `source`
+    - `page`
+      - `title`
+      - `url`
+    - `type`
+    - `sourceId`
+
 ### offline_message.close
   - did
     - update visitor state
 
++ request params
+  - `visitorGuid`
+
 ### offline_message.heartbeat
   - do
     - update visitor state
+
++ request params
+  - `visitorGuid`
 
 ### chat.request
   - will
@@ -378,12 +409,24 @@
   - did
     - calc route
 
++ request params
+  - `visitorGuid`
+  - `source`
+    - `page`
+      - `title`
+      - `url`
+    - `type`
+
 ### chat.start
   - do
     - start timer
   - did
     - send message to mq
       - webhook
+
++ request params
+  - `visitorGuid`
+  - `chatGuid`
 
 ### chat.visitor_send_message
   - will
@@ -395,7 +438,17 @@
     - send message to mq
       - webhook
 
++ request params
+  - `visitorGuid`
+  - `chatGuid`
+  - 
+
 ### chat.audio.visitor_request
+
++ request params
+  - `visitorGuid`
+  - `chatGuid`
+
 ### chat.audio.visitor_cancel
 ### chat.audio.visitor_accept
 ### chat.audio.visitor_refuse
@@ -554,7 +607,7 @@
 
 ## Sign in Server
 
-### agent.sign_in
+//### agent.sign_in
 ### agent.change_password
 
 ### agent.email_activate_ip
@@ -586,7 +639,7 @@
 ```
 
 ```json
-// rules
+// rules  
 {
   "events_handler": [
     {
@@ -596,3 +649,86 @@
   ]
 }
 ```
+
+
+## 共享数据
+
++ Site - map<int, site>
+  - Visitors - map<string, visitor>
+    - `visitorGuid`
+    - `status`
+    - `enterSiteTime`
+    - `info`
+      - `name`
+      - `email`
+      - `firstVisitTime`
+      - `visitorTimes`
+      - `chatTimes`
+    - `social`
+      - `profileUrl`
+      - `avatarUrl`
+      - `source`
+    - `salesforce`
+      - `account`
+      - `contact`
+      - `leads`
+    - `client`
+      - `browser`
+      - `operatingSystem`
+      - `flashVersion`
+      - `screenResolution`
+      - `language`
+    - `geo`
+      - `ip`
+      - `country`
+      - `state`
+      - `city`
+      - `timezone`
+    - `chatGuid` -- ongoing chat
+    - `segments`
+    - `pages`
+      - `currengPage` -- { title, url }
+      - `timeVisitCurrentPage`
+      - `referer`
+      - `landingPage`
+      - `navigations` -- array
+        - `title`
+        - `url`
+        - `enterTime`
+    
+  - Chats - map<string, chat>
+    - `chatGuid`
+    - `requestingPage`
+      - `title`
+      - `url`
+    - `requestingTime`
+    - `transferTime`
+    - `visitorActivityTime`
+    - `prechat`
+      - `name`  
+      - `email`
+      - `phone`
+      - `company`
+      - `product`
+      - `department`
+      - `ticket`
+    - `postchat`
+      - `rating`
+      - `comment`
+      - `fields`
+    - `wrapup`
+      - `category`
+      - `comment`
+      - `fields`
+    - `messages`
+
+  - Agents - map<int, agent>
+    - `agentId`
+    - `info`
+      - `name`
+      - `email`
+      - `title`
+      - `bio`
+      - `avatar`
+    - All
+
