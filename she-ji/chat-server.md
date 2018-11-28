@@ -653,8 +653,9 @@
 
 ## 共享数据
 
-+ Site - map<int, site>
-  - Visitors - map<string, visitor>
++ Site - map<int, site> 
+ 
+  - Visitors - map<string, visitor> 对Key上锁
     - `visitorGuid`
     - `status`
     - `enterSiteTime`
@@ -668,6 +669,9 @@
       - `profileUrl`
       - `avatarUrl`
       - `source`
+    - `sso`
+      - `ssoId`
+
     - `salesforce`
       - `account`
       - `contact`
@@ -721,6 +725,7 @@
       - `comment`
       - `fields`
     - `messages`
+    - `bot` ???
 
   - Agents - map<int, agent>
     - `agentId`
@@ -730,5 +735,40 @@
       - `title`
       - `bio`
       - `avatar`
-    - All
+    - `preference`
+      - `notifications`
+        - `enterSite`
+        - 
+    - `status`
 
+    - `idleTime` -- for allocation ????
+    - `idleTimeForRoundRobin` --- for allocation ????
+
+
+
+## 
+1. 锁中的数据库操作
+
+  - 生成访客  
+    - visitorId 
+    - guid
+  - 生成聊天  - guid
+
+- 写库放到异步 service broker
+
+
+
+- SQL Server 中不启动全文索引服务的情况下启动库
+  - 全文索引中的字段独立成一个表
+
+
+
+- Redis部署, 微软的内存服务器解决方案
+  - 安装包能否自动安装
+  - 数据序列化
+    - C#中的类继承映射到Redis中的数据
+
+2. 锁粒度
+
+
+3. 全文索引 - 自动
