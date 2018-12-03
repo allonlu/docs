@@ -12,20 +12,34 @@
 
 ## 架构目标
 
-1.	让Chatserver成为一个无状态(状态转移到Redis中供各个程序共享的应用，支持负载均衡
-2.	将Chatserver中的异步操作
+1.	让Chatserver成为一个无状态(状态转移到缓存服务器中供各个程序共享的应用，支持负载均衡)
+2.	将Chatserver中的同步IO操作采用异步操作
 
-## 总体思路
+### 总体思路
 
-1.	使用Redis作为数据存储服务器, 将原来ChatServer内存中的数据放到Redis中, 使Chat Server应用可以支持负载均衡, 可以快速重启
-
-  ![deploy](deploy.png)
- 
+1.	使用缓存服务器, 将原来ChatServer内存中的数据放到缓存服务器中, 使Chat Server应用可以支持负载均衡, 可以快速重启
 2.	使用消息队列解耦Chat Server中的一部分异步操作
 3.	将Chat Server模块根据业务进行拆分,   将访客/聊天等核心模块与其他非核心模块分离, 保证核心模块可以在没有数据库的状态下运行, 使得在数据库升级过程中可以使用
 
+### 拓扑结构
 
-## 总体架构 
+![topology](topology.png)
+
+1. 在MaxOn功能基础上, 部署分为主服务器, 以及备用服务器, 异地跨机房部署
+2. 主服务器上的各个主机在一个局域网内
+  - 多套Web Server做Load-balance, 对外使用不同的IP, 可以在Load-balance控制器中控制流量到哪个平台
+  - Redis Server在本地Master-slave, 
+  - 本地有一个MQ Server可以做消息队列管理
+  - 本地有一个数据库服务存储数据
+3. 副服务器上部署一套程序
+  - 部署一套Web应用
+  - Redis服务从主服务器的Redis - Salve同步数据
+  - DB Server仅存储应用所需的配置数据
+  - 本地的MQ Server作为副服务器的消息队列管理
+4. 远程有一个MQ Service, 可以在本地消息服务失效时使用(MaxOn 主副使用同一个远程的MQ Server)
+
+
+## ChatSrver架构 
 
   ![chatserver](chatserver-arch.png)
 
@@ -37,12 +51,10 @@ Chat Server应用程序分5个模块: API, Process, Caching, EventCenter, Asynch
   - 提供Visitor, Agent, Chat  的接口
 2. Process
   - 处理Visitor, Agent, Chat的请求
-3. Caching
-  - 缓存服务器中的状态, 并且与进程外的状态服务器(Redis)沟通
-4. EventCenter
+3. EventCenter
   - 注册/分发ChatServer中的事件
-5. Asynchronous Messages
-  - ChatServer中产生的可以异步执行的消息, 发到消息队列中
+4. DataAccess
+  - 数据访问层, 在其之下有可能是访问数据库/内存/StateService/MQ
 
 #### Adapater Service
 
@@ -58,25 +70,43 @@ Chat Server应用程序分5个模块: API, Process, Caching, EventCenter, Asynch
 
 1. Message compensation
   - 消息的补偿服务, 主要是拉取远程的消息队列服务器，插入到本地的消息队列中
+  - 使用唯一的MessageId 防止消息重复插入
 
 2. Subscription Service
   - 消费消息的服务, 做一些异步操作， 主要为持久化, 第三方集成等
 
-#### Redis API
+#### 缓存服务
 
 这是以Redis 为代表的进程外状态服务器, 在系统中为可插拔状态, 即Caching模块可以不使用进程外的状态服务器而使用进程内的内存来管理状态
 
+## Load-balance
+1. Chat Server应用本身没有状态, 可以部署多套程序指向统一的缓存服务作为进程外的状态服务
+2. 在Load-balance控制器中可以直接做active-active的配置
+3. 单个Chat Server 应用程序作为Load-balance下面的一个节点可以关机, 使流量导向其他现在可用的节点
+4. 多个Chat Server应用访问同一个缓存服务器, 可以使用乐观锁保证事务性
+
+## MaxOn 与 缓存服务
+1. MaxOn 副服务器中对应的缓存服务从主服务器的缓存服务中同步
+2. 副服务器中的缓存服务开启持久化功能, 使得重启以后数据能够恢复
+3. 在副服务器不是active的时候, Chat Server中的时钟停掉, 避免产生重复的消息而产生重复的邮件/Salesforce Case等.
+4. 在副服务器切换为active的时候, 停止缓存服务从主服务器的缓存中同步, 避免老数据同步过来
+5. 服务器切换过程中, 客户端都需要跟Server进行一次数据同步, 以保证客户端与服务器的状态一致
+6. 在One MaxOn的Server上, 副服务器需要对应多个缓存服务
 
 ## 应用发布升级
- 
-### 应用发布升级根据发布影响的范围分为三个级别的发布
 
-1. 只修改逻辑, 可以在线回滚
-  - 直接覆盖发布应用程序
-2. 修改逻辑, 存储的数据, 可以在线回滚(Redis数据没有删除字段, 数据库没有删除/修改字段, 只回滚程序, 不回滚数据库)
-  - 使用Loadbalance切换流量到一个Server, 升级另一个Server, 然后再切回来升级
-3. 修改/删除了数据库字段，不能兼容老的应用程序
+1. 直接发布程序, 应用重启, IIS会处理请求不会因为重启而失败
+  - 旧的请求会在旧的程序中处理, 待旧的请求处理完以后, 进程会关掉
+  - 新的请求会在新程序启动以后再处理
+
+2. Load-balance切换
+  - 将要升级的Server在Load-balance控制器中将流量移掉
+  - 升级这个Server, 待测试通过以后, 将流量导入到升级以后的Server中
+  - 待确认升级的Server没有问题以后, 再通过Load-balance将另外的Server再一个一个升级
+
+3. MaximumOn切换
   - 采用maximumOn切换到副服务器发布
+  - 主服务器升级以后, 将服务器切换回主服务器
 
 ### Redis数据变更影响
 
