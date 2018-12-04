@@ -1,40 +1,48 @@
+# Chat Server 重构
+## Chat Server现有状况
 
-
-# chat server 解耦
-
-## 现有状况
-
-目前ChatServer作为LiveChat的核心模块，为访客端和客服端提供服务，处理聊天的业务，机器人服务对接，集成其他产品等多项业务。在这样的状况下，问题也比较明显，Chatsever作为各种业务耦合的一个单一应用，目前产品功能版本如果涉及到一部分局部功能的变动，也需要进行Chatserver的修改和测试，这里会有多个风险:
-1.  项目周期长；
-2.	回归测试不完备；
-3.	Chatserver涉及的逻辑多，开发人员难以维护；
-4.	Chatserver本身的负载高，
+1. ChatServer不支持Loadbalance, 不支持服务拓展
+2. 单点ChatServer不能宕机, 无法满足运维经常要打补丁的需求
+3. Chatserver本身的负载高, 同步的IO操作影响服务器吞吐量
+4. Chatserver锁颗粒度比较高, 写锁比较多, 整体的读并发度也上不去, 对于大站点的响应会比较慢
+5. MaxOn功能不完备, 而且维护和测试成本比较高
+6. ChatServer与第三方产品（Salesforce,bot）集成的耦合度比较高, 维护和测试成本高
+7. ChatServer的运行严重依赖于数据库, 但是目前的数据库较大, 维护成本很高, 重启需要很长时间, 在保证可用性的前提下无法对数据库进行大的操作
 
 ## 架构目标
 
-1.	让Chatserver成为一个无状态(状态转移到缓存服务器中供各个程序共享的应用，支持负载均衡)
-2.	将Chatserver中的同步IO操作采用异步操作
+1. ChatServer 支持负载均衡
+  - 使用进程外的状态服务
 
-### 总体思路
+2. 降低ChatServer对数据库的依赖, 使Chat Server可以无数据库运行
+  - 配置数据使用缓存, Chat Server直接访问缓存
+  - 写记录使用消息队列
 
-1.	使用缓存服务器, 将原来ChatServer内存中的数据放到缓存服务器中, 使Chat Server应用可以支持负载均衡, 可以快速重启
-2.	使用消息队列解耦Chat Server中的一部分异步操作
-3.	将Chat Server模块根据业务进行拆分,   将访客/聊天等核心模块与其他非核心模块分离, 保证核心模块可以在没有数据库的状态下运行, 使得在数据库升级过程中可以使用
+  + 限于实际情况, 目前版本保证用户聊天业务能够正常进行, 因此以下的功能在无数据库状态下不能支持:
+    - Agent Console查看历史
+    - Control Panel修改配置信息, 查看报表等
+    - Agent Console中处理Ticket/Social
+    - Report API
+    - Restful API
+3. 将ChatServer中的同步操作改为异步操作, 部分可延迟处理的操作采用消息队列解耦, 降低ChatServer负载
+4. 提高ChatServer的稳定性和并发度
+5. 将ChatServer中的第三方(Salesforce, Bot)操作拆除来, 做成独立的应用, 降低这部分耦合度
+6. 采用Redis自带的拷贝方案, 使得配置数据可以直接到副服务器的Redis服务中, 降低MaximumOn的维护成本
 
-### 拓扑结构
+## 拓扑结构
 
 ![topology](topology.png)
 
 1. 在MaxOn功能基础上, 部署分为主服务器, 以及备用服务器, 异地跨机房部署
 2. 主服务器上的各个主机在一个局域网内
   - 多套Web Server做Load-balance, 对外使用不同的IP, 可以在Load-balance控制器中控制流量到哪个平台
-  - Redis Server在本地Master-slave, 
+  - Redis Server在本地做master-slave部署
+    - 当Master宕掉以后系统可以自动切换到使用Slave
   - 本地有一个MQ Server可以做消息队列管理
   - 本地有一个数据库服务存储数据
 3. 副服务器上部署一套程序
   - 部署一套Web应用
   - Redis服务从主服务器的Redis - Salve同步数据
-  - DB Server仅存储应用所需的配置数据
   - 本地的MQ Server作为副服务器的消息队列管理
 4. 远程有一个MQ Service, 可以在本地消息服务失效时使用(MaxOn 主副使用同一个远程的MQ Server)
 
@@ -43,37 +51,57 @@
 
   ![chatserver](chatserver-arch.png)
 
-### 模块说明
-
-#### Chat Server 
-Chat Server应用程序分5个模块: API, Process, Caching, EventCenter, Asynchronous Messages
+### Chat Server 
+Chat Server应用程序分5个模块: API, Process, EventCenter, DataAccess
 1. API
-  - 提供Visitor, Agent, Chat  的接口
+  - 提供Visitor, Agent, Chat的接口, 做序列化反序列化, 聚合处理结果
 2. Process
-  - 处理Visitor, Agent, Chat的请求
+  - 处理Visitor, Agent, Chat的请求逻辑
 3. EventCenter
-  - 注册/分发ChatServer中的事件
+  - 提供注册/分发ChatServer中的事件, 使得Bot/Translation的操作可以进入ChatServer中的事件流中
 4. DataAccess
-  - 数据访问层, 在其之下有可能是访问数据库/内存/StateService/MQ
+  - 数据访问层, 对上公开数据的读写操作, 在其之下有可能是访问数据库/内存/StateService/MQ等
+    - Caching 
+      - 提供缓存数据的访问, 包括配置信息, Visitor, Chat等内容
+      - Caching 后面可以是使用Redis这样的缓存服务器, 也可以为进程内的数据, 或者二者都有
 
-#### Adapater Service
+### Adapater Service
 
-支撑Chat Server功能的其他一些服务，主要是访问第三方服务, 处理返回
+支撑Chat Server功能的其他一些服务, 主要是访问第三方服务, 处理返回
 1. Salesforce Service
   - salesforce相关功能的一些服务, 由客户端调用
+2. Translation Service
+  - 聊天自动翻译的功能, 响应ChatServer中的事件调用第三方API, 返回以后更新聊天
 2. Bot Chat Adapter
-  - bot相关的功能, 监听ChatServer中的一些事件, 响应事件以后调用bot api, 返回结果插入到聊天消息中
+  - Chat中关于Bot的功能, 监听ChatServer中的一些事件, 响应事件以后调用bot api, 返回结果插入到聊天消息中
 
 #### MQ Proxy
 
 消息队列的代理服务, 可以将消息插入到本地的消息队列服务器中, 在本地消息队列不可用时插入到远程消息队列服务器中
 
 1. Message compensation
-  - 消息的补偿服务, 主要是拉取远程的消息队列服务器，插入到本地的消息队列中
-  - 使用唯一的MessageId 防止消息重复插入
+  - 消息的补偿服务, 主要是拉取远程的消息队列服务器, 插入到本地的消息队列中
+  - 使用唯一的MessageId防止消息重复插入
 
 2. Subscription Service
-  - 消费消息的服务, 做一些异步操作， 主要为持久化, 第三方集成等
+  - 消费消息的服务, 做一些异步操作
+    - 持久化
+      - Chat
+      - Offline Message
+      - Visitor
+      - Agent
+      - 其他信息
+        - Agent状态变更记录
+        - Ban
+        - Queue Logs
+        - 站点访问记录 (5m统计一次)
+        - 邀请记录
+        - CannedMessage使用记录
+        - Conversions
+    - Webhook
+    - 发邮件
+    - Ticket集成
+    - Salesforce集成, Zendesk集成
 
 #### 缓存服务
 
@@ -95,6 +123,8 @@ Chat Server应用程序分5个模块: API, Process, Caching, EventCenter, Asynch
 
 ## 应用发布升级
 
+### 发布方式
+
 1. 直接发布程序, 应用重启, IIS会处理请求不会因为重启而失败
   - 旧的请求会在旧的程序中处理, 待旧的请求处理完以后, 进程会关掉
   - 新的请求会在新程序启动以后再处理
@@ -108,17 +138,66 @@ Chat Server应用程序分5个模块: API, Process, Caching, EventCenter, Asynch
   - 采用maximumOn切换到副服务器发布
   - 主服务器升级以后, 将服务器切换回主服务器
 
-### Redis数据变更影响
 
-修改Redis数据对象，对象采用hash类型， 新程序对对象做如下变更
-  1.	增加对象 – 可以同时兼容新老程序，只需要修改用到这个字段的模块
-  2.	对象增加字段 – 可以同时兼容新老程序， 只需要修改用到这个字段的模块
-    - 新程序模块读取老程序模块保存的对象，在反序列化时为新字段添加默认值
-    - 老程序模块读取新程序模块保存的对象，反序列化的时候会忽略新添加的字段
-    - 老程序模块修改新程序模块保存的对象，只会修改自己定义的那些字段，不会修改添加的字段
-    - 新程序模块修改老程序模块保存的对象，完整保存新的对象
-  3.	修改基本数据类型的字段, 因为实际存储都是以string来存储, 因为在类型转化没有问题的前提下可以完全兼容新老版本，需要修改用到这个字段的模块
-  4.	修改对象类型的字段(增加属性)，因为针对这种类型是通过json存储, 应此需要将使用到这个对象的所有模块同步修改
-  - 新程序访问老程序的数据，在反序列化时添加默认值
-  5.	删除对象的字段，因为删除上一个版本在使用的字段可能导致程序回滚失败, 因此只能删除已经确定不用的，在这种情况下也可以同时支持新老程序
+### 根据变更范围觉得发布方式
+
+1. Web应用发布, Redis状态无改动
+  - 可以直接替换dll发布程序/Loadbalance发布, 取决于部署的平台是有Loadbalance
+  - 回滚: 可以直接使用旧的dll进行回滚
+
+2. Web应用发布, Redis状态有改动, 但是新老数据可以同时兼容新老程序
+  - 可以直接替换dll发布程序/Loadbalance发布, 取决于部署的平台是有Loadbalance
+  - 回滚: 可以直接使用旧的dll回归
+
+3. Web应用发布, Redis状态有改动, 新/老数据可以兼容新程序, 但是新的数据不能兼容老程序
+  - 可以采用Loadbalance发布, 或者MaximumOn切换发布
+  - 回滚：因为Redis数据无法回滚, 因此在这种情况下回滚只能通过MaximumOn切换以后再回退程序
+
+4. 整个发布, Redis数据不兼容, 即新的程序无法直接访问老的Redis数据
+  - 采用MaximumOn发布
+    - 发布过程中需要让副服务器始终跑旧程序, 需要保证切换过程可以做到从新切换到老的
+  - 回滚: 采用MaximumOn回滚
+
+5. Web应用发布, 数据库升级 
+  - 数据库的升级不影响ChatServer发布, 只有程序是否对Redis的兼容性改动才会影响发布方式，但是需要按照一定的流程发布
+    - 停止Redis Sync, Portal, Persistence等操作数据库的服务
+    - 升级数据库
+    - 发布应用程序
+    - 启动停掉的程序
+  - 回滚:  数据库回滚可以同发布流程
+
+### 运维维护
+
+1. Web Server维护 (有Loadbalance才允许不停服务下维护)
+  - 在Loadbalance中将需要维护的服务器流量切掉
+  - 对Web Server服务就行维护
+  - 启动服务
+  - 在Loadbalance中将流量切回来
+
+2. Redis服务维护
+  - Master 维护, 需要将Redis切换到Slave, 停掉Redis-Master那台服务, 做维护, 再起来, 配置为从原来的Slave同步, 如果需要将Redis切回来则可以再讲Master切回来
+  - Slave 维护, 将MaximumOn中的Redis切换到从Master同步, 然后直接维护Slave服务
+
+3. 数据库服务维护
+  - 需要停止所有跟数据库相关的应用以后再进行维护
+
+4. MQ Server维护
+  - 保证远程MQ Server可用的情况下可以对MQ Server做停机维护
+
+5. 整个平台迁移
+  - 需要切换到MaximumOn以后再做平台迁移事宜
+
+### 程序对Redis数据变更的兼容性支持
+
+修改Redis数据对象, 对象采用hash类型,  新程序对对象做如下变更
+  1.	增加对象 – 可以同时兼容新老程序, 只需要修改用到这个字段的模块
+  2.	对象增加字段 – 可以同时兼容新老程序,  只需要修改用到这个字段的模块
+    - 新程序模块读取老程序模块保存的对象, 在反序列化时为新字段添加默认值
+    - 老程序模块读取新程序模块保存的对象, 反序列化的时候会忽略新添加的字段
+    - 老程序模块修改新程序模块保存的对象, 只会修改自己定义的那些字段, 不会修改添加的字段
+    - 新程序模块修改老程序模块保存的对象, 完整保存新的对象
+  3.	修改基本数据类型的字段, 因为实际存储都是以string来存储, 因为在类型转化没有问题的前提下可以完全兼容新老版本, 需要修改用到这个字段的模块
+  4.	修改对象类型的字段(增加属性), 因为针对这种类型是通过json存储, 应此需要将使用到这个对象的所有模块同步修改
+  - 新程序访问老程序的数据, 在反序列化时添加默认值
+  5.	删除对象的字段, 因为删除上一个版本在使用的字段可能导致程序回滚失败, 因此只能删除已经确定不用的, 在这种情况下也可以同时支持新老程序
 
