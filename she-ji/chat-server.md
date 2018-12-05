@@ -35,14 +35,15 @@
 
 1. 在MaxOn功能基础上, 部署分为主服务器, 以及备用服务器, 异地跨机房部署
 2. 主服务器上的各个主机在一个局域网内
-  - 多套Web Server做Load-balance, 对外使用不同的IP, 可以在Load-balance控制器中控制流量到哪个平台
+  - 多套Web Server做Load-balance, 内部做NLB, 对外公开一个Cluster IP
   - Redis Server在本地做master-slave部署
     - 当Master宕掉以后系统可以自动切换到使用Slave
   - 本地有一个MQ Server可以做消息队列管理
   - 本地有一个数据库服务存储数据
 3. 副服务器上部署一套程序
   - 部署一套Web应用
-  - Redis服务从主服务器的Redis - Salve同步数据
+  - Redis服务从主服务器的Redis - Master同步数据
+    - 配置salve-priority 为0, 这样在master宕机以后他不会被选为master
   - 本地的MQ Server作为副服务器的消息队列管理
 4. 远程有一个MQ Service, 可以在本地消息服务失效时使用(MaxOn 主副使用同一个远程的MQ Server)
 
@@ -52,14 +53,12 @@
   ![chatserver](chatserver-arch.png)
 
 ### Chat Server 
-Chat Server应用程序分5个模块: API, Process, EventCenter, DataAccess
+Chat Server应用程序分3个模块: API, Process, DataAccess
 1. API
   - 提供Visitor, Agent, Chat的接口, 做序列化反序列化, 聚合处理结果
 2. Process
   - 处理Visitor, Agent, Chat的请求逻辑
-3. EventCenter
-  - 提供注册/分发ChatServer中的事件, 使得Bot/Translation的操作可以进入ChatServer中的事件流中
-4. DataAccess
+3. DataAccess
   - 数据访问层, 对上公开数据的读写操作, 在其之下有可能是访问数据库/内存/StateService/MQ等
     - Caching 
       - 提供缓存数据的访问, 包括配置信息, Visitor, Chat等内容
@@ -72,12 +71,11 @@ Chat Server应用程序分5个模块: API, Process, EventCenter, DataAccess
   - salesforce相关功能的一些服务, 由客户端调用
 2. Translation Service
   - 聊天自动翻译的功能, 响应ChatServer中的事件调用第三方API, 返回以后更新聊天
-2. Bot Chat Adapter
+3. Bot Chat Adapter
   - Chat中关于Bot的功能, 监听ChatServer中的一些事件, 响应事件以后调用bot api, 返回结果插入到聊天消息中
 
-#### MQ Proxy
 
-消息队列的代理服务, 可以将消息插入到本地的消息队列服务器中, 在本地消息队列不可用时插入到远程消息队列服务器中
+#### MQ
 
 1. Message compensation
   - 消息的补偿服务, 主要是拉取远程的消息队列服务器, 插入到本地的消息队列中
@@ -120,6 +118,9 @@ Chat Server应用程序分5个模块: API, Process, EventCenter, DataAccess
 4. 在副服务器切换为active的时候, 停止缓存服务从主服务器的缓存中同步, 避免老数据同步过来
 5. 服务器切换过程中, 客户端都需要跟Server进行一次数据同步, 以保证客户端与服务器的状态一致
 6. 在One MaxOn的Server上, 副服务器需要对应多个缓存服务
+  - 每一个平台在MaximumOnServer上有一个缓存服务, 访问时根据站点找到平台然后对应到具体的缓存服务上
+
+  ![one-maximum-on-redis-topology](one-maximum-on-redis-topology.png)
 
 ## 应用发布升级
 
@@ -131,11 +132,17 @@ Chat Server应用程序分5个模块: API, Process, EventCenter, DataAccess
 
 2. Load-balance切换
   - 将要升级的Server在Load-balance控制器中将流量移掉
+    - ?? 在Windows NLB 上测试在Loadbalance下请求的路由????
   - 升级这个Server, 待测试通过以后, 将流量导入到升级以后的Server中
   - 待确认升级的Server没有问题以后, 再通过Load-balance将另外的Server再一个一个升级
 
 3. MaximumOn切换
-  - 采用maximumOn切换到副服务器发布
+  - 将服务器切换到MaximumOnServer
+    - 将主服务器切为不可用, 当前使用副服务器
+    - 停止副服务器Redis Server 从主服务器的 Redis(master) Server上同步
+    - 将副服务器切为可用
+    - 在副服务器上同步聊天数据
+  - 待切换成功以后, 可以将主服务器做各种升级, 包括程序， 
   - 主服务器升级以后, 将服务器切换回主服务器
 
 
@@ -150,15 +157,15 @@ Chat Server应用程序分5个模块: API, Process, EventCenter, DataAccess
   - 回滚: 可以直接使用旧的dll回归
 
 3. Web应用发布, Redis状态有改动, 新/老数据可以兼容新程序, 但是新的数据不能兼容老程序
-  - 可以采用Loadbalance发布, 或者MaximumOn切换发布
+  - 采用MaximumOn切换发布
   - 回滚：因为Redis数据无法回滚, 因此在这种情况下回滚只能通过MaximumOn切换以后再回退程序
 
 4. 整个发布, Redis数据不兼容, 即新的程序无法直接访问老的Redis数据
-  - 采用MaximumOn发布
+  - 采用MaximumOn发布 
     - 发布过程中需要让副服务器始终跑旧程序, 需要保证切换过程可以做到从新切换到老的
   - 回滚: 采用MaximumOn回滚
 
-5. Web应用发布, 数据库升级 
+5. 数据库升级 
   - 数据库的升级不影响ChatServer发布, 只有程序是否对Redis的兼容性改动才会影响发布方式，但是需要按照一定的流程发布
     - 停止Redis Sync, Portal, Persistence等操作数据库的服务
     - 升级数据库
@@ -175,8 +182,8 @@ Chat Server应用程序分5个模块: API, Process, EventCenter, DataAccess
   - 在Loadbalance中将流量切回来
 
 2. Redis服务维护
-  - Master 维护, 需要将Redis切换到Slave, 停掉Redis-Master那台服务, 做维护, 再起来, 配置为从原来的Slave同步, 如果需要将Redis切回来则可以再讲Master切回来
-  - Slave 维护, 将MaximumOn中的Redis切换到从Master同步, 然后直接维护Slave服务
+  - Master 维护, 需要将Redis切换到Slave, 停掉Redis-Master那台服务, 做维护, 再起来, 配置为从原来的Slave同步, 如果需要将Redis切回来则可以再将Master切回来
+  - Slave 维护, 直接停机维护即可
 
 3. 数据库服务维护
   - 需要停止所有跟数据库相关的应用以后再进行维护
@@ -186,18 +193,3 @@ Chat Server应用程序分5个模块: API, Process, EventCenter, DataAccess
 
 5. 整个平台迁移
   - 需要切换到MaximumOn以后再做平台迁移事宜
-
-### 程序对Redis数据变更的兼容性支持
-
-修改Redis数据对象, 对象采用hash类型,  新程序对对象做如下变更
-  1.	增加对象 – 可以同时兼容新老程序, 只需要修改用到这个字段的模块
-  2.	对象增加字段 – 可以同时兼容新老程序,  只需要修改用到这个字段的模块
-    - 新程序模块读取老程序模块保存的对象, 在反序列化时为新字段添加默认值
-    - 老程序模块读取新程序模块保存的对象, 反序列化的时候会忽略新添加的字段
-    - 老程序模块修改新程序模块保存的对象, 只会修改自己定义的那些字段, 不会修改添加的字段
-    - 新程序模块修改老程序模块保存的对象, 完整保存新的对象
-  3.	修改基本数据类型的字段, 因为实际存储都是以string来存储, 因为在类型转化没有问题的前提下可以完全兼容新老版本, 需要修改用到这个字段的模块
-  4.	修改对象类型的字段(增加属性), 因为针对这种类型是通过json存储, 应此需要将使用到这个对象的所有模块同步修改
-  - 新程序访问老程序的数据, 在反序列化时添加默认值
-  5.	删除对象的字段, 因为删除上一个版本在使用的字段可能导致程序回滚失败, 因此只能删除已经确定不用的, 在这种情况下也可以同时支持新老程序
-
