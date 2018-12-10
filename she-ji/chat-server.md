@@ -62,11 +62,12 @@ Chat Server应用程序分3个模块: API, Process, DataAccess
   - 数据访问层, 对上公开数据的读写操作, 在其之下有可能是访问数据库/内存/StateService/MQ等
     - Caching 
       - 提供缓存数据的访问, 包括配置信息, Visitor, Chat等内容
-      - Caching 后面可以是使用Redis这样的缓存服务器, 也可以为进程内的数据, 或者二者都有
+      - Caching 后面可以是使用Redis这样的缓存服务器, 也可以为进程内的数据
 
 ### Adapater Service
 
-支撑Chat Server功能的其他一些服务, 主要是访问第三方服务, 处理返回
+支撑Chat Server功能的其他一些服务, 主要是访问第三方服务, 处理返回, 
+### 接口都要放到chat-server, 后面通过chatserver调用salesfoce service
 1. Salesforce Service
   - salesforce相关功能的一些服务, 由客户端调用
 2. Translation Service
@@ -74,12 +75,23 @@ Chat Server应用程序分3个模块: API, Process, DataAccess
 3. Bot Chat Adapter
   - Chat中关于Bot的功能, 监听ChatServer中的一些事件, 响应事件以后调用bot api, 返回结果插入到聊天消息中
 
+#### 缓存服务
+
+Chat Server针对不同的部署平台, 可以是纯进程内的内存缓存, 也可以是进程外的其他服务, 如Redis缓存服务。
+
+1. Sync Service
+  - 通知机制, Agent在后台更新站点配置数据以后, 需要通知Redis服务实时更新缓存数据
+  - 同步逻辑, 通过记录比对RowVersion将数据库中的差量数据读取出来更新到Redis中
+
+2. Redis Service
+  - 针对站点配置的缓存数据可以
 
 #### MQ
 
 1. Message compensation
   - 消息的补偿服务, 主要是拉取远程的消息队列服务器, 插入到本地的消息队列中
   - 使用唯一的MessageId防止消息重复插入
+    - 消费完以后要保留MessageId, 消费的时候
 
 2. Subscription Service
   - 消费消息的服务, 做一些异步操作
@@ -100,10 +112,6 @@ Chat Server应用程序分3个模块: API, Process, DataAccess
     - 发邮件
     - Ticket集成
     - Salesforce集成, Zendesk集成
-
-#### 缓存服务
-
-这是以Redis 为代表的进程外状态服务器, 在系统中为可插拔状态, 即Caching模块可以不使用进程外的状态服务器而使用进程内的内存来管理状态
 
 ## Load-balance
 1. Chat Server应用本身没有状态, 可以部署多套程序指向统一的缓存服务作为进程外的状态服务
@@ -132,7 +140,7 @@ Chat Server应用程序分3个模块: API, Process, DataAccess
 
 2. Load-balance切换
   - 将要升级的Server在Load-balance控制器中将流量移掉
-    - ?? 在Windows NLB 上测试在Loadbalance下请求的路由????
+    - 在Windows NLB 上测试在Loadbalance下请求的路由
   - 升级这个Server, 待测试通过以后, 将流量导入到升级以后的Server中
   - 待确认升级的Server没有问题以后, 再通过Load-balance将另外的Server再一个一个升级
 
@@ -142,11 +150,17 @@ Chat Server应用程序分3个模块: API, Process, DataAccess
     - 停止副服务器Redis Server 从主服务器的 Redis(master) Server上同步
     - 将副服务器切为可用
     - 在副服务器上同步聊天数据
-  - 待切换成功以后, 可以将主服务器做各种升级, 包括程序， 
+      - 切换时, 客户端发送消息同步的命令到server端 (带上本地的最大消息id)
+      - Server查找缓存中聊天的最大消息id, 如果不存在该聊天则最大消息id为0
+        - 如果Server的消息id比较大, 则将后面的消息返回给客户端, 客户端同步本地消息
+        - 如果Server的消息id比较小, 则返回当前server端的最大消息id, 客户端接收到最大消息id以后, 将后面的消息再发送到服务器
+        - Server端对接收到的消息有防止重入机制, 避免同样的消息重复插入到聊天中
+  - 待切换成功以后, 可以将主服务器做各种升级, 包括程序
   - 主服务器升级以后, 将服务器切换回主服务器
+    - 客户端与服务器采用与主切副同样的消息同步机制, 在主服务器中恢复聊天
 
 
-### 根据变更范围觉得发布方式
+### 根据变更范围的发布方式
 
 1. Web应用发布, Redis状态无改动
   - 可以直接替换dll发布程序/Loadbalance发布, 取决于部署的平台是有Loadbalance
@@ -158,7 +172,8 @@ Chat Server应用程序分3个模块: API, Process, DataAccess
 
 3. Web应用发布, Redis状态有改动, 新/老数据可以兼容新程序, 但是新的数据不能兼容老程序
   - 采用MaximumOn切换发布
-  - 回滚：因为Redis数据无法回滚, 因此在这种情况下回滚只能通过MaximumOn切换以后再回退程序
+  - 回滚：因为Redis数据无法回滚, 
+  
 
 4. 整个发布, Redis数据不兼容, 即新的程序无法直接访问老的Redis数据
   - 采用MaximumOn发布 
@@ -193,3 +208,19 @@ Chat Server应用程序分3个模块: API, Process, DataAccess
 
 5. 整个平台迁移
   - 需要切换到MaximumOn以后再做平台迁移事宜
+
+## MQ接口
+
+定义MQ的接口供ChatServer使用, 后面的具体实现作为生产者不需要知道, 可以是SQL Server Service Broker, 也可以是RabbitMQ
+
+1. producer
+  + publish(queue_name, unique_id, body)
+    - queue_name, 表示消息队列的名字
+    - unique_id, 表示消息的id, 采用guid保证全局唯一性
+    - body, 表示消息的内容, 使用json格式 
+2. consumer
+  + create_consumer(thread, queue_name), 返回一个consumer的实例
+    + consumer.dequeue(), 返回一个消息
+      - unique_id
+      - body
+  + ack(queue_name, unique_id), 消息消费确认
