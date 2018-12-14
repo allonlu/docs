@@ -1,64 +1,67 @@
 
-# webhook event
+# Webhook
 
-webhook event统一采用 noun.verb 的形式来定义
+目前只有LiveChat系统中有webhook, 现在把这部分定义提到全局, 可以在系统中定义所有产品的webhook. 针对现在一个webhook只能订阅一个event, 可以考虑将一个webhook订阅多个event.
 
-1. chat.start
-2. chat.end
-3. chat.messageReceive
-4. chat.fileUpload
+## Webhook基本属性
 
-# webhook type
+  - `events` - `required`, 该webhook订阅的事件, 为一组列表
+  - `url` - `required` 该wenhook的远程响应地址
+  - `mothed` - 目前均为post请求url
+  - `headers` - `optional`, 用户可以自己定义headers, 用于处理请求时候验证
+  - `secret` - `optional`, 用于对data的签名, 签名也同样会放到请求头中
 
-- async
-  - 该类型的webhook异步执行, 可以放到消息队列中
-  - 调用方不需要处理用户的response, 只需要保证成功(status: 2xx)即可
-  - 如果调用不成功需要重试
-- await (unique)
-  - 未防止第三方调用, 该类型webhook超时时间短, 失败不会重试
-  - 同一个event只允许配置一种await类型的webhook
-  - 调用方可以异步执行, 但不能放到消息队列中, 需要保证实时性
-  - 调用方必须处理response, response的内容根据Comm100定义的规则(actions)可以处理一些事情
+## Signature
 
-# webhook response
+系统可以对webhook的内容进行签名, 将签名的内容提交到请求的url, 以供客户可以验证内容是否有效, 签名内容放到请求头中, 使用secret对请求的内容采用hmac_sha1算法生成
 
-1. webhook response 可以根据以下规则返回, Comm100会解析返回的内容, 执行特定操作
+`X-Hub-Signature: sha1=xxxxxxxxx`
+
+## Webhook Event
+
+webhook event统一采用 noun.verb 的形式来定义, noun 可以为某个实体, 也可以为某一个实体的子实体
+
+  - chat.visitor.requested
+  - chat.started
+  - chat.ended
+  - chat.visitor.replied
+  - chat.visitor.submitted_survey
+  - chat.visitor.uploaded_file ??
+  - chat.agent.replied
+  - chat.agent.wraped_up
+  - agent.status.changed
+  - offline_message.submitted
+  - ticket.created
+  - ticket.status.changed
+  - ticket.closed
+  - // visitor.location.sent
+  - visitor.location.sent
+  - bot.answer.rated
+
+
+## Webhook Request
 
 ```json
 {
-  "error": "",
-  "preventDefault": false,
-  "actions": [
-    {
-      "type": "chat.response",
-      "payload": {
-        "sender": "bot",
-        "messageId": "17",
-        "content": "The weather is good today?",
-      }
+  "event": "chat.started",
+  "unique_id": "guid-guid-guid-guid",
+  "time": 138789898, 
+  "data": {
+    "chat":{
+      "id": "xx",
+      // other properties
     },
-    // more actions
-  ]
+    "visitor": {
+      "name": "",
+      "email": "",
+      // other properties
+    }
+  }
 }
 ```
 
-- `error`, 可以返回错误, server可以记录这些错误, 在某些特定的event可能直接返回到客户端, 如(chat.fileUpload)
-- `preventDefault`, 是否阻止默认行为
-- `actions`, 调用放会执行的操作, 可以为多个
-  - `type`, action 的名字
-  - `payload`, 载荷, 可以放一些执行这个action的一些数据
+  - `event` - 表示event名字
+  - `unique_id` - 表示这个事件的唯一id, 在server重试时接受方可以判断是否已经接收到了而直接丢掉
 
-## chat actions
-
- chat下面的action只允许在chat的event下面才可以响应, 响应的范围也是在该chat下面
-
-  1. chat.addMessage, 可以在聊天中插入一条消息
-    - `sender`
-    - `content`
-  2. chat.response, 可以对指定的一条消息进行回复, 这条消息会插到指定的消息下面
-    - `sender`
-    - `messageId`
-    - `content`
-  3. chat.end, 可以结束当前聊天
 
 
