@@ -1,4 +1,4 @@
-# Initiated-IDP with Artifact
+# IDP-Initiated with Artifact
 
 在用户已经登录系统时, SSO可以从IDP端发起, 使得用户在访问SP(Comm100)的资源时可以省去系统生成SAMLRequest跟IDP交换这部分信息, 为保证整个过程的安全性, 我们选择Artifact的方式获取IDP的Assertion.
 
