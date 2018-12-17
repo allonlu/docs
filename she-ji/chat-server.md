@@ -207,14 +207,14 @@ Chat Server针对不同的部署平台, 可以是纯进程内的内存缓存, �
   - 保证远程MQ Server可用的情况下可以对MQ Server做停机维护
 
 5. 整个平台迁移
-  - 需要切换到MaximumOn以后再做平台迁移事宜
+  - 需要切换到MaximumOn以后再做 平台迁移事宜
 
 ## MQ接口
 
 定义MQ的接口供ChatServer使用, 后面的具体实现作为生产者不需要知道, 可以是SQL Server Service Broker, 也可以是RabbitMQ
 
 1. producer
-  + publish(queue_name, unique_id, body)
+  + publish(queue_name, unique_id, payload)
     - queue_name, 表示消息队列的名字
     - unique_id, 表示消息的id, 采用guid保证全局唯一性
     - body, 表示消息的内容, 使用json格式 
@@ -222,5 +222,60 @@ Chat Server针对不同的部署平台, 可以是纯进程内的内存缓存, �
   + create_consumer(thread, queue_name), 返回一个consumer的实例
     + consumer.dequeue(), 返回一个消息
       - unique_id
-      - body
+      - payload
   + ack(queue_name, unique_id), 消息消费确认
+
+### Queue 定义
+
+1. chat_ended
+  + queue
+    - persistence
+    - email
+    - ticket
+    - webhook
+    - salesforce
+    - zendesk
+    
+  + payload
+    - `id` - guid
+    - `siteId`
+    - `visitorId`
+    - `sessionId`
+    - `ticket`
+      - `id`
+      - `ifNew`
+      - `title`
+    - `prechat`
+      - `name`
+      - `email`
+      - `phone`
+      - `productService`
+      - `department`
+    - `wrapup`
+      - `comment`
+      - `category`
+    - `agentIds`
+    - `ifEnterQueue`
+    - `requestTime`
+    - `startTime`
+    - `endTime`
+
+
+1. submit_offline_message
+  + queue
+    - persistence
+    - email
+    - ticket
+    - webhook
+    - salesforce
+    - zendesk
+  + payload
+    - 
+
+## 代码结构
+
+1. 对象先不拆开
+2. 路由，邀请在进程内
+3. 事件是由Client来定义的还是由ChatServer来定义的
+4. Redis/进程内存的接口定义
+  1. 
