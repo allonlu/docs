@@ -101,7 +101,9 @@
 # Agent Console Extension
 
 支持ticket的extesion, 需要在manifest中增加两个配置项
-  - `location` 
+  - `location`, 可设置的值为`chat_side_bar`, `ticket_side_bar`
+    - `chat_side_bar` 显示在Chat窗口的右侧tab中
+    - `ticket_side_bar` 显示在Ticket窗口的右侧tab中
   - `page_mode`, 可设置的值为`single`, `multi`, agent console在加载extension时会根据不同的模式加载
     - `single` 针对单页应用, 在所有的chat/ticket中会使用同一个页面, 针对不同的聊天/访客不需要保存不同的状态, 或者单页应用本身维护了各种状态
     - `multi` 针对多页应用, 在每一个打开的chat/ticket中会生成一个实例 (iframe), 切换不同的chat/ticket就会切换显示不同的iframe
