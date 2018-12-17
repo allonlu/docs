@@ -10,6 +10,7 @@
   - `mothed` - 目前均为post请求url
   - `headers` - `optional`, 用户可以自己定义headers, 用于处理请求时候验证
   - `secret` - `optional`, 用于对data的签名, 签名也同样会放到请求头中
+  - `type` - sync / async
 
 ## Signature
 
@@ -36,7 +37,8 @@ webhook event统一采用 noun.verb 的形式来定义, noun 可以为某个实�
   - ticket.closed
   - // visitor.location.sent
   - visitor.location.sent
-  - bot.answer.rated
+  - bot.answer.rated ??
+  - bot.message_received ??
 
 
 ## Webhook Request
