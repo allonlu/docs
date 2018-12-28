@@ -114,12 +114,12 @@ Chat Server应用程序分3个模块: API, Process, DataAccess
 1. 不宕机发布
   - 发布新的chat server core, 修改配置信息
 
-1. Load-balance切换
+2. Load-balance切换
   - 将要升级的Server直接关掉, Loadbalance 会知道这台Server已经不能服务, 将该站点的请求转到另一节点上
   - 升级这个Server, 待测试通过以后, 将流量导入回升级以后的Server中
   - 待确认升级的Server没有问题以后, 再通过Load-balance将另外的Server再一个一个升级
 
-2. MaximumOn切换
+3. MaximumOn切换
   - 将服务器切换到MaximumOnServer
     - 将主服务器切为不可用, 当前使用副服务器
     - 将副服务器切为可用
@@ -145,7 +145,7 @@ Chat Server应用程序分3个模块: API, Process, DataAccess
   - 回滚: 可以直接使用旧的dll回滚
 
 3. Chat Server应用发布, 数据库升级, ChatServer 兼容新老数据库
-  - 采用
+  - 采用Load-balance发布
 
 4. Chat Server应用发布, 数据库升级, 老的ChatServer不兼容新的数据库
   - 采用MaximumOn发布
@@ -166,13 +166,13 @@ Chat Server应用程序分3个模块: API, Process, DataAccess
   - 启动服务
   - 在Loadbalance中将流量切回来
 
-3. 数据库服务维护
+2. 数据库服务维护
   - 需要停止所有跟数据库相关的应用以后再进行维护
 
-4. MQ Server维护
+3. MQ Server维护
   - 保证远程MQ Server可用的情况下可以对MQ Server做停机维护
 
-5. 整个平台迁移
+4. 整个平台迁移
   - 需要切换到MaximumOn以后再做 平台迁移事宜
 
 ## MQ接口
@@ -254,8 +254,8 @@ MQ Name的定义由具体事件的namespace来定义, 如comm100.chatEnded, comm
 3. agent.wrapup
 
   + distributor
-  - agent.wrapup.persistents
-  - agent.wrapup.webhoook
+    - agent.wrapup.persistents
+    - agent.wrapup.webhoook
 
 4. visitor.rating
 5. cannedMessage.useLog
