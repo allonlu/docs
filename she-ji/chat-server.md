@@ -16,6 +16,7 @@
 2. 降低ChatServer对数据库的依赖, 使Chat Server可以无数据库运行
   - 配置数据使用缓存, Chat Server直接访问缓存
   - 写记录的同时写一条log, Chat Server根据log进行缓存的更新
+  - 
   + 限于实际情况, 目前版本保证用户聊天业务能够正常进行, 因此以下的功能在无数据库状态下不能支持:
     - Agent Console查看历史
     - Control Panel修改配置信息, 查看报表等
@@ -31,15 +32,17 @@
 
 ![topology](topology.png)
 
-1. 在MaxOn功能基础上, 部署分为主服务器, 以及备用服务器, 异地跨机房部署
-2. 主服务器上的各个主机在一个局域网内
+1. 在MaxOn功能基础上, 部署分为主部署, 以及MaximumOn部署, 异地跨机房部署
+2. 主部署上的各个主机在一个局域网内
   - 多套Web Server做Load-balance, 使用IIS ARR做load-balance控制器, 根据站点进行分流
+  - 多个ARR节点采用NLB做HA, ARR服务对SiteId进行分流, 不同的站点分到对应的Web Server上
   - 本地有一个MQ Server可以做消息队列管理
   - 本地有一个数据库服务存储数据
-3. 副服务器上部署一套程序
+3. 副部署因为实际使用比较少, 可以只部署一套程序, 不做Loadbalance
   - 部署一套Web应用
+  - 部署一个数据库服务, 从主部署中同步配置数据
   - 本地的MQ Server作为副服务器的消息队列管理
-4. 远程有一个MQ Service, 可以在本地消息服务失效时使用(MaxOn 主副使用同一个远程的MQ Server)
+4. 远程有一个MQ Service, 可以在本地消息服务失效时使用(主副部署可以使用同一个远程的MQ Server)
 
 
 ## ChatSrver架构 
@@ -97,14 +100,17 @@ Chat Server应用程序分3个模块: API, Process, DataAccess
     - Salesforce集成, Zendesk集成
 
 ### Load-balance
-1. Load-balance控制器(ARR)监控集群中的所有服务, 能够知道所有机器的服务状态
-2. Load-balance控制器采用相同的逻辑进行路由, 使得请求不管是到哪一台Load-balance控制器最后的路由结果都是一致的
+1. 集群中多台ARR服务器采用NLB对外提供统一的访问IP, 
+  - NLB配置为active-standby模式, 只有在一台ARR服务器出状况以后才会使用另一台ARR服务器
+2. Load-balance控制器(ARR)监控集群中的所有服务, 能够知道所有机器的服务状态
+3. Load-balance控制器采用相同的逻辑进行路由, 使得请求不管是到哪一台Load-balance控制器最后的路由结果都是一致的
   - 在添加节点时需要手工修改路由的计算逻辑参数
   - 在节点出问题以后会采用同样的分流逻辑来计算, 即将原来分到这个节点上的请求按照一定的逻辑均分到其他可用的节点
   - 在节点恢复以后, 再将原来是该节点的请求重新分配到该节点
-3. 单个Chat Server 应用程序作为Load-balance下面的一个节点可以关机, 使流量导向其他现在可用的节点
+  - 不在列表配置列表中的则按照特定的分流逻辑来计算(如取模)
+4. 单个Chat Server 应用程序作为Load-balance下面的一个节点可以关机, 使流量导向其他现在可用的节点
   - 在某一个Site从一个节点切到另一个节点时, 客户端应该在新的节点恢复聊天/访客信息
-4. 多个Chat Server产生的消息需要做去重(如chatEnded事件对于同一个id只会处理一次)
+5. 多个Chat Server产生的消息需要做去重(如chatEnded事件对于同一个id只会处理一次)
 
 
 ## 应用发布升级
@@ -198,11 +204,7 @@ MQ Name的定义由具体事件的namespace来定义, 如comm100.chatEnded, comm
 ### Service Broker Queue Distributor
 
   针对某些MQ可能会有很多的消费者需要同时消费, 在其上面会先有一个分发器的消费者消费一级事件, 然后再根据实际的业务分发二级的消息到MQ, 分发器可以根据站点配置决定是否要生成具体的二级事件, 如某一个站点没有开启Salesforce功能, 则不生成comm100.chatEnded.salesforce的message, 分发器实际为一级事件的消费者, 每一个处理二级事件的消费者实际上需要在分发器的配置上增加一个处理逻辑(主要为判断是否需要分发二级事件的判断逻辑, 以及二级事件的名称)
-
-### Service Broker Queue Consumer
-
-  采用waitfor命令获取消息
-
+  
 ### Queue 定义
 
 1. chat.end
@@ -265,8 +267,81 @@ MQ Name的定义由具体事件的namespace来定义, 如comm100.chatEnded, comm
 9. invitation.log 
 10. visit.log
 11. conversion.log
-12. agent.preference
-13. visitor.ban
+12. agent.savePreference
+13. agent.ban
 
 
+## 功能范围
+1. MaximumOn功能
+  - direct link/bbs code支持maximum on
+    - 从chat server分离访客端的前端功能 (下载js, 打开chat window)
+  - 副服务器支持所有的功能
+    - salesforce
+    - zendesk
+    - join.me
+    - update preference
+    - attach ticket
+  - 切换过程优化
+    - 从agnet和visitor两点进行聊天消息恢复, 避免丢掉聊天消息
+  - bot
+    - 同步bot配置数据, 使服务器可以支持bot功能
+    - 回迁bot数据(主要回迁消息队列的内容)
 
+
+2. 异步采用消息队列
+  - 数据库持久化
+  - 第三方集成调用
+  - 发邮件
+  - Webhook
+
+3. Chat Server支持无库运行
+  - 访客, 使用guid, 而不使用visitorId
+  - 聊天, 使用guid, 而不是从库里生成聊天使用id
+  - 配置缓存
+    - ChatServer启动时就加载最近一个月使用过或者注册的站点配置数据
+    - 站点的配置更新以后写一条log, ChatServer定时读取这个log记录, 更新站点的配置数据
+  - 消息队列
+    - Service Broker
+
+4. 锁颗粒度降低, 使用concurrent下面的数据结构
+  - 使用concurrentDictionary 以及 concurrentQueue
+  - 锁做到Visitor/Agent级别, 访问时按照一定顺序上锁
+    - 先对Visitor上锁, 然后再对Agent上锁
+      - Agent Logout, 需要在agent对象中维护当前正在聊天的访客列表, 然后不要嵌套执行
+    - 
+
+5. 状态恢复
+  - 访客/聊天状态恢复
+    - Visitor Info
+    - Salesforce Info
+      - Server端加密以后送给访客端保存, 采用固定的密钥进行加密, 再做一次以siteId为密钥的加密
+    - Custom Variable
+      - Server端加密以后放到访客端保存, 采用固定的密钥进行加密, 再做一次以siteId为密钥的加密
+    - SSO Id - 不能恢复
+      - 聊天, 普通聊天也需要重新要求登录
+      - Bot, intent如果需要登录的话可能需要再次登录
+    - Chat Info 
+      - Waiting - 由Visitor端恢复
+      - Chatting - 由Agent端和Visitor端一起恢复
+  - Agent状态恢复
+
+6. Tracking访客数量限制
+  - 维护tracking的列表, 只在生成访客时进队, 在访客超期以后出队
+    - Agent只获取在Tracking列表中的访客
+    - 如果访客不在Tracking列表中, 则禁用该访客的heartbeat功能, 只有在刷新页面时才会更新button状态
+    - 不在tracking列表中的访客其他功能正常, server端会同样有这部分访客
+
+7. 访客和聊天分开
+  - 单独获取waiting队列, 而不从原来的getAllVisitor接口获取
+  - 单独获取聊天的状态更新, 只获取自己的聊天以及有权限可以Join/Monitor的聊天
+
+
+8. 访客端前端功能 - MaximumOn支持
+  - 分离访客端获取js或者聊天窗口的功能到另一个应用
+    - https://chatserver.comm100.com/livechat.ashx - js入口, 使用在code, chat window中
+    - https://chatserver.comm100.com/chatwindow.aspx - 聊天窗口, 可能使用在direct link 或者mobile sdk中
+    - https://chatserver.comm100.com/chatwindowmobile.aspx - 旧的手机访客端聊天窗口, 使用在客户的app中
+    - https://chatserver.comm100.com/bbs.aspx?siteId={siteId}&planId={planId} - bbs 图片, 使用在bbs code中
+      - 直接跳转主或者副服务器
+
+## 登录模块的HA, 暂不支持
